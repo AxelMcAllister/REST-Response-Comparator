@@ -31,6 +31,8 @@ export interface ExecutionResult {
 
 export type ParallelExecutionMode = 'all-at-once' | 'per-curl'
 
+const PROXY_URL = 'http://localhost:3001/proxy';
+
 /**
  * Execute a single request for a host
  */
@@ -54,7 +56,31 @@ async function executeRequest(
       validateStatus: () => true // Don't throw on any status code
     }
 
-    const response = await axios.request(config)
+    let response;
+    try {
+      // Try direct request first
+      response = await axios.request(config)
+    } catch (directError) {
+      // If direct request fails and we are in dev mode, try proxy
+      if (import.meta.env.DEV) {
+        console.warn(`Direct request to ${finalCurl.url} failed, retrying via proxy...`, directError);
+        
+        // Construct proxy URL
+        const proxyConfig = { ...config };
+        proxyConfig.url = `${PROXY_URL}?url=${encodeURIComponent(finalCurl.url)}`;
+        
+        // Remove host header if present, as it will be set by proxy
+        if (proxyConfig.headers) {
+          delete proxyConfig.headers['Host'];
+          delete proxyConfig.headers['host'];
+        }
+
+        response = await axios.request(proxyConfig);
+      } else {
+        throw directError;
+      }
+    }
+
     const responseTime = Date.now() - startTime
 
     return {
