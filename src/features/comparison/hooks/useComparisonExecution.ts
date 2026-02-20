@@ -21,39 +21,45 @@ export const useComparisonExecution = () => {
     setIsExecuting(true)
     clearComparisons()
 
+    // Extract values for execution (the service expects plain strings)
+    const curlValues = curlCommands.map(c => c.value).filter(v => v.trim().length > 0)
+    if (curlValues.length === 0) {
+      setIsExecuting(false)
+      return
+    }
+
     // Parse hosts for execution
     const parsedHosts = parseHosts(hosts.map(h => h.value))
 
-    // Create a map for O(1) host lookup by normalized URL
-    const hostMap = new Map(hosts.map(h => [h.normalizedUrl, h]));
-
     try {
       // Execute requests
-      const results = await executeCurlBatch(curlCommands, parsedHosts, parallelMode)
+      const results = await executeCurlBatch(curlValues, parsedHosts, parallelMode)
 
       // Process results
       results.forEach(({ curlIndex, curlCommand, results: executionResults }) => {
         const referenceHost = hosts.find(h => h.isReference) || hosts[0]
-        
-        // Map execution results to HostResponse objects
-        const hostResponses: HostResponse[] = executionResults.map(r => {
-            // Find the matching host in the store to get the correct ID
-            const storeHost = hostMap.get(r.hostValue)
-            
-            return {
-                hostId: storeHost ? storeHost.id : r.hostId,
-                hostValue: r.hostValue,
-                response: r.response ? {
-                    data: r.response.data,
-                    status: r.response.status,
-                    statusText: r.response.statusText,
-                    headers: r.response.headers,
-                    responseTime: r.responseTime
-                } : null,
-                error: r.error || null,
-                isLoading: false,
-                responseTime: r.responseTime
-            }
+
+        // Map execution results to HostResponse objects.
+        // executionResults preserves the same index order as `hosts` (Promise.all
+        // keeps insertion order, and the executor iterates hosts in order), so we
+        // can safely match by index to get the correct store UUID.
+        const hostResponses: HostResponse[] = executionResults.map((r, index) => {
+          const storeHost = hosts[index]
+
+          return {
+            hostId: storeHost?.id ?? r.hostId,
+            hostValue: r.hostValue,
+            response: r.response ? {
+              data: r.response.data,
+              status: r.response.status,
+              statusText: r.response.statusText,
+              headers: r.response.headers,
+              responseTime: r.responseTime
+            } : null,
+            error: r.error || null,
+            isLoading: false,
+            responseTime: r.responseTime
+          }
         })
 
         // Find reference response
@@ -61,8 +67,8 @@ export const useComparisonExecution = () => {
 
         // Compute differences
         const differences: HostDifference[] = hostResponses.map(hr => {
-            if (!referenceResponse) return { hostId: hr.hostId, differences: [] }
-            return computeDifferences(referenceResponse, hr)
+          if (!referenceResponse) return { hostId: hr.hostId, differences: [] }
+          return computeDifferences(referenceResponse, hr)
         })
 
         const comparison: ComparisonResult = {

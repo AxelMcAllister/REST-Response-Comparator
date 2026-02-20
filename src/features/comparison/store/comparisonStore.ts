@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand'
-import type { Host, ComparisonResult, ParallelExecutionMode, ComparisonOptions } from '@/shared/types'
+import type { Host, CurlCommand, ComparisonResult, ParallelExecutionMode, ComparisonOptions } from '@/shared/types'
 import { parseHosts } from '../services/hostParser'
 
 interface ComparisonStore {
@@ -15,11 +15,11 @@ interface ComparisonStore {
   updateHost: (id: string, value: string) => void
   setReferenceHost: (id: string) => void
 
-  // cURL Commands
-  curlCommands: string[]
-  setCurlCommands: (commands: string[]) => void
-  addCurlCommands: (commands: string[]) => void
-  removeCurlCommand: (index: number) => void
+  // cURL Commands (each has a stable id for row-level editing)
+  curlCommands: CurlCommand[]
+  setCurlCommands: (commands: CurlCommand[]) => void
+  addCurlCommands: (commands: CurlCommand[]) => void
+  removeCurlCommand: (id: string) => void
 
   // Execution
   parallelMode: ParallelExecutionMode
@@ -53,7 +53,7 @@ export const useComparisonStore = create<ComparisonStore>((set, get) => ({
   addHosts: (hostInputs) => {
     const parsed = parseHosts(hostInputs)
     const hasReference = get().hosts.some(h => h.isReference)
-    
+
     const newHosts: Host[] = parsed.map((host, index) => ({
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `host-${Date.now()}-${index}`,
       value: host.original,
@@ -68,7 +68,7 @@ export const useComparisonStore = create<ComparisonStore>((set, get) => ({
   removeHost: (id) => {
     const host = get().hosts.find(h => h.id === id)
     const newHosts = get().hosts.filter(h => h.id !== id)
-    
+
     // If removed reference, make first remaining host reference
     if (host?.isReference && newHosts.length > 0) {
       newHosts[0].isReference = true
@@ -105,9 +105,9 @@ export const useComparisonStore = create<ComparisonStore>((set, get) => ({
       curlCommands: [...state.curlCommands, ...commands]
     }))
   },
-  removeCurlCommand: (index) => {
+  removeCurlCommand: (id) => {
     set(state => ({
-      curlCommands: state.curlCommands.filter((_, i) => i !== index)
+      curlCommands: state.curlCommands.filter(c => c.id !== id)
     }))
   },
 

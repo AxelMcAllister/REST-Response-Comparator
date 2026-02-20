@@ -16,6 +16,11 @@ export interface Host {
   normalizedUrl: string // Normalized base URL
 }
 
+export interface CurlCommand {
+  id: string
+  value: string
+}
+
 export interface ParsedCurl {
   url: string
   method: string

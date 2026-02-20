@@ -1,27 +1,33 @@
-import { ComparisonResult } from '@/shared/types'
+import type { ComparisonResult } from '@/shared/types'
 import { MultiHostDiffViewer } from '../MultiHostDiffViewer/MultiHostDiffViewer'
+import './ComparisonTabs.css'
+
+const METHOD_CLASS: Record<string, string> = {
+  GET: 'method-get',
+  POST: 'method-post',
+  PUT: 'method-put',
+  DELETE: 'method-delete',
+  PATCH: 'method-patch',
+}
 
 export const ComparisonTab = ({ comparison }: { comparison: ComparisonResult }) => {
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <h3 className="text-lg font-semibold flex items-center">
-          <span className={`px-2 py-1 rounded text-xs font-bold mr-2 ${
-            comparison.parsedCurl.method === 'GET' ? 'bg-blue-100 text-blue-800' :
-            comparison.parsedCurl.method === 'POST' ? 'bg-green-100 text-green-800' :
-            comparison.parsedCurl.method === 'PUT' ? 'bg-yellow-100 text-yellow-800' :
-            comparison.parsedCurl.method === 'DELETE' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
+    <div className="ctab-content">
+      <div className="ctab-info">
+        <h3 className="ctab-heading">
+          <span className={`method-badge ${METHOD_CLASS[comparison.parsedCurl.method] ?? 'method-other'}`}>
             {comparison.parsedCurl.method}
           </span>
-          <span className="truncate">{comparison.parsedCurl.url}</span>
+          <span className="ctab-url">{comparison.parsedCurl.url}</span>
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
-          {comparison.hostResponses.length} hosts compared • {new Date(comparison.timestamp).toLocaleTimeString()}
+        <p className="ctab-meta">
+          {comparison.hostResponses.length} host{comparison.hostResponses.length !== 1 ? 's' : ''} compared
+          &nbsp;·&nbsp;
+          {new Date(comparison.timestamp).toLocaleTimeString()}
         </p>
       </div>
-      <div className="flex-1 overflow-auto">
+
+      <div className="ctab-viewer">
         <MultiHostDiffViewer comparison={comparison} />
       </div>
     </div>

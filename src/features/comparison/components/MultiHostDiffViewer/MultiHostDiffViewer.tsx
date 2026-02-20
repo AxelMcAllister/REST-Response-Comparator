@@ -1,72 +1,122 @@
-import { ComparisonResult } from '@/shared/types'
+import { useState } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
+import type { ComparisonResult } from '@/shared/types'
 import { formatResponseData } from '../../services/diffService'
+import './MultiHostDiffViewer.css'
 
-const diffViewerStyles = {
+const DIFF_STYLES = {
   variables: {
     light: {
       diffViewerBackground: '#ffffff',
-      diffViewerColor: '#212529',
-      addedBackground: '#e6ffed',
-      addedColor: '#24292e',
-      removedBackground: '#ffeef0',
-      removedColor: '#24292e',
-      wordAddedBackground: '#acf2bd',
-      wordRemovedBackground: '#fdb8c0',
-      addedGutterBackground: '#cdffd8',
-      removedGutterBackground: '#ffdce0',
-      gutterBackground: '#f7f7f7',
-      gutterBackgroundDark: '#f3f1f1',
-      highlightBackground: '#fffbdd',
-      highlightGutterBackground: '#fff5b1',
-    }
+      diffViewerColor: '#1e293b',
+      addedBackground: '#f0fdf4',
+      addedColor: '#1e293b',
+      removedBackground: '#fef2f2',
+      removedColor: '#1e293b',
+      wordAddedBackground: '#bbf7d0',
+      wordRemovedBackground: '#fecaca',
+      addedGutterBackground: '#dcfce7',
+      removedGutterBackground: '#fee2e2',
+      gutterBackground: '#f8fafc',
+      gutterBackgroundDark: '#f1f5f9',
+      highlightBackground: '#fffbeb',
+      highlightGutterBackground: '#fef3c7',
+    },
   },
   line: {
-    padding: '10px 2px',
-    '&:hover': {
-      background: '#f7f7f7',
-    },
-  }
-};
+    padding: '4px 4px',
+    fontSize: '0.8rem',
+    fontFamily: "'Courier New', Courier, monospace",
+  },
+}
 
 export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResult }) => {
-  const referenceHost = comparison.hostResponses.find(h => h.hostId === comparison.referenceHostId)
-  const otherHosts = comparison.hostResponses.filter(h => h.hostId !== comparison.referenceHostId)
+  const [expandedHosts, setExpandedHosts] = useState<Record<string, boolean>>({})
+
+  const referenceHost = comparison.hostResponses.find(
+    h => h.hostId === comparison.referenceHostId
+  )
+  const otherHosts = comparison.hostResponses.filter(
+    h => h.hostId !== comparison.referenceHostId
+  )
 
   if (!referenceHost) {
-    return <div className="p-4 text-red-500">No reference host found</div>
+    return <div className="diff-state diff-state--info">No reference host found.</div>
+  }
+  if (otherHosts.length === 0) {
+    return <div className="diff-state diff-state--info">No other hosts to compare against.</div>
   }
 
-  if (otherHosts.length === 0) {
-    return <div className="p-4 text-gray-500">No other hosts to compare against</div>
-  }
+  const toggleExpand = (hostId: string) =>
+    setExpandedHosts(prev => ({ ...prev, [hostId]: !prev[hostId] }))
 
   return (
-    <div className="flex flex-row overflow-x-auto h-full">
-      {otherHosts.map(host => (
-        <div key={host.hostId} className="flex-none w-[800px] border-r border-gray-300 last:border-r-0">
-          <div className="p-2 bg-gray-100 border-b border-gray-200 flex justify-between items-center sticky top-0 z-10">
-            <div className="flex-1 text-center font-semibold text-gray-700">
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded mr-2">REF</span>
-              {referenceHost.hostValue}
+    <div className="diff-pairs">
+      {otherHosts.map(host => {
+        const isExpanded = expandedHosts[host.hostId] ?? false
+        const refHasError = !!referenceHost.error
+        const hostHasError = !!host.error
+        const refData = formatResponseData(referenceHost.response?.data)
+        const hostData = formatResponseData(host.response?.data)
+
+        return (
+          <div key={host.hostId} className="diff-pair">
+            {/* Header */}
+            <div className="diff-pair-header">
+              <div className="diff-host-info diff-host-info--ref">
+                <span className="diff-ref-badge">REF</span>
+                <span className="diff-host-name">{referenceHost.hostValue}</span>
+                {referenceHost.responseTime != null && !refHasError && (
+                  <span className="diff-timing">{referenceHost.responseTime}ms</span>
+                )}
+                {refHasError && <span className="diff-badge diff-badge--error">FAILED</span>}
+              </div>
+
+              <span className="diff-vs">vs</span>
+
+              <div className="diff-host-info">
+                <span className="diff-host-name">{host.hostValue}</span>
+                {host.responseTime != null && !hostHasError && (
+                  <span className="diff-timing">{host.responseTime}ms</span>
+                )}
+                {hostHasError && <span className="diff-badge diff-badge--error">FAILED</span>}
+              </div>
+
+              <button
+                type="button"
+                className="diff-expand-btn"
+                onClick={() => toggleExpand(host.hostId)}
+                title={isExpanded ? 'Show differences only' : 'Expand to see full response'}
+              >
+                {isExpanded ? '⊟ Collapse' : '⊞ Expand'}
+              </button>
             </div>
-            <div className="w-8 text-center text-gray-400">vs</div>
-            <div className="flex-1 text-center font-semibold text-gray-700">
-              {host.hostValue}
-            </div>
+
+            {/* Body */}
+            {refHasError ? (
+              <div className="diff-state diff-state--error">
+                <strong>Reference host failed:</strong> {referenceHost.error}
+              </div>
+            ) : hostHasError ? (
+              <div className="diff-state diff-state--error">
+                <strong>{host.hostValue} failed:</strong> {host.error}
+              </div>
+            ) : (
+              <div className="diff-viewer-wrap">
+                <ReactDiffViewer
+                  oldValue={refData}
+                  newValue={hostData}
+                  splitView={true}
+                  useDarkTheme={false}
+                  styles={DIFF_STYLES}
+                  // When not expanded: show only 3 context lines around each diff
+                  extraLinesSurroundingDiff={isExpanded ? 99999 : 3}
+                />
+              </div>
+            )}
           </div>
-          
-          <div className="diff-viewer-container">
-            <ReactDiffViewer
-              oldValue={formatResponseData(referenceHost.response?.data)}
-              newValue={formatResponseData(host.response?.data)}
-              splitView={true}
-              useDarkTheme={false}
-              styles={diffViewerStyles}
-            />
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

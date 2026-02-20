@@ -1,52 +1,193 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useComparisonStore } from '../../store/comparisonStore'
 import { ComparisonTab } from './ComparisonTab'
+import type { ComparisonResult } from '@/shared/types'
+import './ComparisonTabs.css'
+
+/**
+ * Generate a tab label from a comparison result.
+ * Uses the cURL number (1-based) as the primary label.
+ * Custom rename overrides take precedence via labelOverrides.
+ */
+function getShortLabel(comparison: ComparisonResult): string {
+  return `cURL ${comparison.curlIndex + 1}`
+}
 
 export const ComparisonTabs = () => {
   const { comparisons, isExecuting } = useComparisonStore()
+
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
+  const [tabOrder, setTabOrder] = useState<string[]>([])
+  const [labelOverrides, setLabelOverrides] = useState<Record<string, string>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingLabel, setEditingLabel] = useState('')
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
-  // Set first tab as active when comparisons are added
+  const editInputRef = useRef<HTMLInputElement>(null)
+  const draggedIdRef = useRef<string | null>(null)
+
+  // Sync tab order: keep existing order, append new tabs at the end
   useEffect(() => {
-    if (!activeTabId && comparisons.length > 0) {
-      setActiveTabId(comparisons[0].id)
-    }
-  }, [comparisons, activeTabId])
+    setTabOrder(prev => {
+      const currentIds = new Set(comparisons.map(c => c.id))
+      const kept = prev.filter(id => currentIds.has(id))
+      const added = comparisons.map(c => c.id).filter(id => !prev.includes(id))
+      return [...kept, ...added]
+    })
 
-  if (comparisons.length === 0 && !isExecuting) {
-    return null
-  }
+    // Auto-select: keep current if still valid, else select first
+    if (comparisons.length > 0) {
+      setActiveTabId(prev =>
+        prev && comparisons.some(c => c.id === prev) ? prev : comparisons[0].id
+      )
+    } else {
+      setActiveTabId(null)
+    }
+  }, [comparisons])
+
+  // Focus the rename input when editing starts
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [editingId])
+
+  // Derived: comparisons in user-determined order
+  const orderedComparisons = tabOrder
+    .map(id => comparisons.find(c => c.id === id))
+    .filter(Boolean) as ComparisonResult[]
+
+  // ── Rename ────────────────────────────────────────────────────────────────
+
+  const startRename = useCallback((id: string, currentLabel: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingId(id)
+    setEditingLabel(currentLabel)
+  }, [])
+
+  const confirmRename = useCallback(() => {
+    if (editingId && editingLabel.trim()) {
+      setLabelOverrides(prev => ({ ...prev, [editingId]: editingLabel.trim() }))
+    }
+    setEditingId(null)
+    setEditingLabel('')
+  }, [editingId, editingLabel])
+
+  // ── Drag & Drop ───────────────────────────────────────────────────────────
+
+  const handleDragStart = useCallback((id: string, e: React.DragEvent) => {
+    draggedIdRef.current = id
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
+  const handleDragOver = useCallback((id: string, e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverId(id)
+  }, [])
+
+  const handleDrop = useCallback((droppedOnId: string) => {
+    const dragged = draggedIdRef.current
+    if (!dragged || dragged === droppedOnId) {
+      setDragOverId(null)
+      draggedIdRef.current = null
+      return
+    }
+    setTabOrder(prev => {
+      const result = [...prev]
+      const fromIdx = result.indexOf(dragged)
+      const toIdx = result.indexOf(droppedOnId)
+      if (fromIdx < 0 || toIdx < 0) return prev
+      result.splice(fromIdx, 1)
+      result.splice(toIdx, 0, dragged)
+      return result
+    })
+    setDragOverId(null)
+    draggedIdRef.current = null
+  }, [])
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  if (comparisons.length === 0 && !isExecuting) return null
 
   const activeComparison = comparisons.find(c => c.id === activeTabId)
 
   return (
-    <div className="flex flex-col h-full border rounded-lg shadow-sm bg-white mt-4">
-      <div className="flex border-b border-gray-200 overflow-x-auto bg-gray-50 rounded-t-lg">
-        {comparisons.map((comparison) => (
-          <button
-            key={comparison.id}
-            className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
-              activeTabId === comparison.id
-                ? 'bg-white border-b-2 border-blue-500 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-            }`}
-            onClick={() => setActiveTabId(comparison.id)}
-          >
-            <span className="font-bold mr-2">{comparison.parsedCurl.method}</span>
-            <span className="truncate max-w-[200px] inline-block align-bottom">
-              {comparison.parsedCurl.url}
-            </span>
-            {comparison.status === 'loading' && (
-              <span className="ml-2 animate-spin inline-block">⏳</span>
-            )}
-          </button>
-        ))}
+    <div className="ctabs">
+      {/* Tab Bar */}
+      <div className="ctabs-bar" role="tablist" aria-label="Comparison results">
+        {orderedComparisons.map((comparison) => {
+          const generatedLabel = getShortLabel(comparison)
+          const label = labelOverrides[comparison.id] ?? generatedLabel
+          const isActive = activeTabId === comparison.id
+          const isDragOver = dragOverId === comparison.id
+
+          return (
+            <div
+              key={comparison.id}
+              role="tab"
+              aria-selected={isActive}
+              className={[
+                'ctabs-tab',
+                isActive ? 'ctabs-tab--active' : '',
+                isDragOver ? 'ctabs-tab--drag-over' : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => { if (!editingId) setActiveTabId(comparison.id) }}
+              draggable
+              onDragStart={(e) => handleDragStart(comparison.id, e)}
+              onDragOver={(e) => handleDragOver(comparison.id, e)}
+              onDrop={() => handleDrop(comparison.id)}
+              onDragLeave={() => setDragOverId(null)}
+              onDragEnd={() => { setDragOverId(null); draggedIdRef.current = null }}
+              title={`${comparison.parsedCurl.method} ${comparison.parsedCurl.url}\nDouble-click to rename`}
+            >
+              {editingId === comparison.id ? (
+                <input
+                  ref={editInputRef}
+                  className="ctabs-rename-input"
+                  value={editingLabel}
+                  onChange={(e) => setEditingLabel(e.target.value)}
+                  onBlur={confirmRename}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmRename()
+                    if (e.key === 'Escape') { setEditingId(null); setEditingLabel('') }
+                    e.stopPropagation()
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span
+                  className="ctabs-tab-label"
+                  onDoubleClick={(e) => {
+                    setActiveTabId(comparison.id)
+                    startRename(comparison.id, label, e)
+                  }}
+                >
+                  {label}
+                </span>
+              )}
+
+              {comparison.status === 'loading' && (
+                <span className="ctabs-spinner" aria-label="Loading">⏳</span>
+              )}
+            </div>
+          )
+        })}
+
+        {isExecuting && comparisons.length === 0 && (
+          <div className="ctabs-loading-placeholder">
+            <span className="ctabs-spinner">⏳</span> Running comparisons…
+          </div>
+        )}
       </div>
-      <div className="flex-1 overflow-hidden">
+
+      {/* Tab Content */}
+      <div className="ctabs-content" role="tabpanel">
         {activeComparison ? (
           <ComparisonTab comparison={activeComparison} />
         ) : (
-          <div className="p-4 text-gray-500 text-center">Select a comparison to view details</div>
+          <div className="ctabs-empty">Select a tab to view results</div>
         )}
       </div>
     </div>
