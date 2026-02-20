@@ -1,0 +1,157 @@
+.curl-input {
+  margin-bottom: 2rem;
+}
+
+.curl-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.curl-input-header label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.curl-input-mode-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.curl-input-mode-toggle button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #ddd;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.curl-input-mode-toggle button:hover {
+  background-color: #f5f5f5;
+}
+
+.curl-input-mode-toggle button.active {
+  background-color: #646cff;
+  color: white;
+  border-color: #646cff;
+}
+
+.curl-input-textarea-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.curl-input-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.curl-input-textarea:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.curl-input-add-button {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.curl-input-add-button:hover {
+  background-color: #535bf2;
+}
+
+.curl-input-file-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.curl-input-file {
+  margin: 0 auto;
+}
+
+.curl-input-file-hint {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0;
+}
+
+.curl-input-error {
+  color: #d32f2f;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #ffebee;
+  border-radius: 4px;
+}
+
+.curl-input-list {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.curl-input-list-header {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.curl-input-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.curl-input-item-command {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.curl-input-item-remove {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.curl-input-item-remove:hover {
+  background-color: #ffebee;
+  color: #d32f2f;
+}

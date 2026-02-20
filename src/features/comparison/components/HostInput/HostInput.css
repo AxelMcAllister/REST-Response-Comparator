@@ -1,0 +1,194 @@
+.host-input {
+  margin-bottom: 2rem;
+}
+
+.host-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.host-input-header label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.host-input-hint {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.host-input-add {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.host-input-field {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.host-input-field:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+.host-input-add-button {
+  padding: 0.5rem 1rem;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.host-input-add-button:hover {
+  background-color: #535bf2;
+}
+
+.host-input-error {
+  color: #d32f2f;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: #ffebee;
+  border-radius: 4px;
+}
+
+.host-input-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.host-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.host-field-reference {
+  border-color: #646cff;
+  background-color: #f0f0ff;
+}
+
+.host-field-reference-button {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.host-field-reference-button:hover {
+  transform: scale(1.1);
+}
+
+.host-field-display {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.host-field-value {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 2px;
+}
+
+.host-field-value:hover {
+  background-color: #e0e0e0;
+}
+
+.host-field-reference-label {
+  font-size: 0.75rem;
+  color: #646cff;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  background-color: #e3f2fd;
+  border-radius: 12px;
+}
+
+.host-field-edit {
+  flex: 1;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.host-field-input {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #646cff;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.host-field-save,
+.host-field-cancel {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.host-field-save:hover {
+  background-color: #4caf50;
+  color: white;
+}
+
+.host-field-cancel:hover {
+  background-color: #f44336;
+  color: white;
+}
+
+.host-field-remove {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.host-field-remove:hover {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.host-input-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+}
