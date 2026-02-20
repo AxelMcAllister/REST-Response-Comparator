@@ -27,28 +27,31 @@ export function parseCurl(curlCommand: string): ParsedCurl {
   const methodMatch = command.match(/-X\s+(\w+)/i)
   if (methodMatch) {
     parsed.method = methodMatch[1].toUpperCase()
-    command = command.replace(/-X\s+\w+/i, '')
+    command = command.replace(methodMatch[0], '')
   }
   
   // Extract headers (-H flags)
+  // Use matchAll to find all headers without modifying the string in the loop
   const headerRegex = /-H\s+['"]([^'"]+)['"]/g
-  let headerMatch
-  while ((headerMatch = headerRegex.exec(command)) !== null) {
-    const header = headerMatch[1]
+  const headerMatches = [...command.matchAll(headerRegex)]
+  
+  headerMatches.forEach(match => {
+    const header = match[1]
     const colonIndex = header.indexOf(':')
     if (colonIndex > 0) {
       const key = header.substring(0, colonIndex).trim()
       const value = header.substring(colonIndex + 1).trim()
       parsed.headers[key] = value
     }
-    command = command.replace(headerMatch[0], '')
-  }
+    // Remove the header from command string to clean it up for URL extraction
+    command = command.replace(match[0], '')
+  })
   
   // Extract body (-d or --data flag)
   const bodyMatch = command.match(/(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+([^\s]+)/)
   if (bodyMatch) {
     parsed.body = bodyMatch[1] || bodyMatch[2]
-    command = command.replace(/(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+([^\s]+)/, '')
+    command = command.replace(bodyMatch[0], '')
   }
   
   // Extract URL (should be the remaining part)
@@ -82,7 +85,7 @@ export function hasHostPlaceholder(curlCommand: string): boolean {
  */
 export function autoDetectHostPlaceholder(curlCommand: string): string {
   // Try to find URL pattern and replace hostname
-  const urlPattern = /(https?:\/\/)([^\/\s]+)(\/.*)?/g
+  const urlPattern = /(https?:\/\/)([^\/\s]+)(\/.*)?/
   const match = urlPattern.exec(curlCommand)
   
   if (match) {
@@ -91,17 +94,20 @@ export function autoDetectHostPlaceholder(curlCommand: string): string {
     const path = match[3] || ''
     
     // Replace hostname with {host}
-    return curlCommand.replace(
-      `${protocol}${hostname}${path}`,
-      `${protocol}{host}${path}`
-    )
+    // We construct the full URL to ensure we replace the correct part
+    const fullUrl = `${protocol}${hostname}${path}`
+    const newUrl = `${protocol}{host}${path}`
+    
+    return curlCommand.replace(fullUrl, newUrl)
   }
   
   // If no URL pattern found, try to find hostname-like pattern
+  // This is a fallback and might be risky, but useful for partial cURLs
   const hostnamePattern = /([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+)/
   const hostnameMatch = hostnamePattern.exec(curlCommand)
   
   if (hostnameMatch) {
+    // Only replace if it looks like a host and not part of a flag
     return curlCommand.replace(hostnameMatch[1], '{host}')
   }
   

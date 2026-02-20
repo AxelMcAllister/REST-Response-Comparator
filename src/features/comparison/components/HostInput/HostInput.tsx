@@ -38,7 +38,7 @@ export default function HostInput({ hosts, onHostsChange }: HostInputProps) {
     // Add new hosts (first one becomes reference if no reference exists)
     const hasReference = hosts.some(h => h.isReference)
     const newHosts = parsed.map((host, index) => ({
-      id: `host-${Date.now()}-${index}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `host-${Date.now()}-${index}`,
       value: host.original,
       isReference: !hasReference && index === 0 // First new host is reference if none exists
     }))

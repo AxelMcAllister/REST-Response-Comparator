@@ -18,11 +18,11 @@ export function replaceHostInCurl(
   const hasProtocol = /https?:\/\//.test(curlCommand)
   
   if (hasProtocol) {
-    // Replace {host} with full normalized URL (includes protocol)
-    return curlCommand.replace(/\{host\}/g, host.normalized)
-  } else {
-    // No protocol in cURL, use just hostname
+    // cURL already has protocol, so just replace {host} with hostname
     return curlCommand.replace(/\{host\}/g, host.hostname)
+  } else {
+    // No protocol in cURL, replace {host} with full normalized URL (includes protocol)
+    return curlCommand.replace(/\{host\}/g, host.normalized)
   }
 }
 
@@ -37,9 +37,11 @@ export function replaceHostInParsedCurl(
   
   let newUrl: string
   if (hasProtocol) {
-    newUrl = parsedCurl.url.replace(/\{host\}/g, host.normalized)
-  } else {
+    // URL already has protocol, so just replace {host} with hostname
     newUrl = parsedCurl.url.replace(/\{host\}/g, host.hostname)
+  } else {
+    // No protocol in URL, replace {host} with full normalized URL (includes protocol)
+    newUrl = parsedCurl.url.replace(/\{host\}/g, host.normalized)
   }
   
   return {

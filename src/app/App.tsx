@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import HostInput from '@/features/comparison/components/HostInput/HostInput'
 import CurlInput from '@/features/comparison/components/CurlInput/CurlInput'
+import { ComparisonTabs } from '@/features/comparison/components/ComparisonTabs/ComparisonTabs'
 import { useComparisonStore } from '@/features/comparison/store/comparisonStore'
 import { parseHosts } from '@/features/comparison/services/hostParser'
+import { useComparisonExecution } from '@/features/comparison/hooks/useComparisonExecution'
 import '../index.css'
 import './App.css'
 
@@ -14,16 +16,22 @@ function App() {
   const {
     hosts,
     curlCommands,
-    setCurlCommands
+    setCurlCommands,
+    isExecuting
   } = useComparisonStore()
+
+  const { execute } = useComparisonExecution()
 
   const [showMissingHostWarning, setShowMissingHostWarning] = useState(false)
   const [pendingCommand, setPendingCommand] = useState<{ original: string; autoDetected: string } | null>(null)
 
   const handleHostsChange = (newHosts: Array<{ id: string; value: string; isReference: boolean }>) => {
+    // Create a map of existing hosts for O(1) lookup
+    const existingHostsMap = new Map(hosts.map(h => [h.id, h]));
+
     // Update store - need to preserve normalizedUrl
     const storeHosts = newHosts.map(h => {
-      const existing = hosts.find(ex => ex.id === h.id)
+      const existing = existingHostsMap.get(h.id);
       // If host exists, preserve normalizedUrl; otherwise parse it
       if (existing) {
         return {
@@ -107,11 +115,18 @@ function App() {
           )}
 
           {hosts.length > 0 && curlCommands.length > 0 && (
-            <div className="App-ready">
-              <p>Ready to compare! {hosts.length} host(s) × {curlCommands.length} cURL command(s)</p>
-              <p className="App-note">Comparison tabs and diff viewer coming next...</p>
+            <div className="App-actions mt-4 flex justify-end">
+              <button
+                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                onClick={execute}
+                disabled={isExecuting}
+              >
+                {isExecuting ? 'Comparing...' : 'Compare Responses'}
+              </button>
             </div>
           )}
+
+          <ComparisonTabs />
         </div>
       </main>
     </div>

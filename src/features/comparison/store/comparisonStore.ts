@@ -55,7 +55,7 @@ export const useComparisonStore = create<ComparisonStore>((set, get) => ({
     const hasReference = get().hosts.some(h => h.isReference)
     
     const newHosts: Host[] = parsed.map((host, index) => ({
-      id: `host-${Date.now()}-${index}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `host-${Date.now()}-${index}`,
       value: host.original,
       isReference: !hasReference && get().hosts.length === 0 && index === 0,
       normalizedUrl: host.normalized

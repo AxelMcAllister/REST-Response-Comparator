@@ -109,6 +109,8 @@
   padding: 1rem;
   background-color: #f9f9f9;
   border-radius: 4px;
+  /* Prevent list from expanding parent */
+  overflow: hidden;
 }
 
 .curl-input-list-header {
@@ -126,14 +128,18 @@
   background-color: white;
   border-radius: 4px;
   border: 1px solid #e0e0e0;
+  /* Ensure item doesn't overflow */
+  min-width: 0;
 }
 
 .curl-input-item-command {
   flex: 1;
   font-family: 'Courier New', monospace;
   font-size: 0.75rem;
-  overflow-x: auto;
+  /* Truncate long text instead of scroll */
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .curl-input-item-remove {
@@ -149,6 +155,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  /* Prevent button from shrinking */
+  flex-shrink: 0;
 }
 
 .curl-input-item-remove:hover {

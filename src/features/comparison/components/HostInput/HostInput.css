@@ -75,6 +75,8 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   background-color: #f9f9f9;
+  /* Prevent the container from growing uncontrollably */
+  overflow: hidden;
 }
 
 .host-field-reference {
@@ -104,6 +106,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  /* Prevent the container from growing uncontrollably */
+  min-width: 0;
 }
 
 .host-field-value {
@@ -113,6 +117,10 @@
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 2px;
+  /* Truncate long text */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .host-field-value:hover {
@@ -133,6 +141,7 @@
   display: flex;
   gap: 0.25rem;
   align-items: center;
+  min-width: 0;
 }
 
 .host-field-input {

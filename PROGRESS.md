@@ -7,11 +7,18 @@
 2. **curlParser.ts** - Parse cURL commands, extract method/headers/body
 3. **hostReplacer.ts** - Smart {host} placeholder replacement
 4. **requestExecutor.ts** - HTTP request execution with parallel execution support
+5. **diffService.ts** - Response formatting and diff computation
 
 ### UI Components
 1. **HostInput** - Host input with reference selection (star icon)
 2. **HostInputField** - Individual host field with edit/remove/reference toggle
 3. **CurlInput** - cURL input with textarea and file upload support
+4. **ComparisonTabs** - Tabbed interface for multiple cURL comparisons
+5. **MultiHostDiffViewer** - Side-by-side diff viewer with reference host highlighting
+
+### Logic & State
+- **useComparisonExecution** - Hook for handling execution logic
+- **comparisonStore** - Updated with execution state and results management
 
 ### Types
 - Updated shared types for multi-host comparison
@@ -22,23 +29,21 @@
 ## 🚧 In Progress / Next Steps
 
 ### Immediate Next Steps
-1. **Comparison Tabs Component** - Tab structure for displaying results
-2. **Multi-Host Diff Viewer** - Side-by-side comparison display
-3. **Main App Integration** - Wire everything together
-4. **Comparison Options** - Global settings + per-tab override
-5. **Auto-Detection UI** - Warning dialog for missing {host}
+1. **Comparison Options** - Global settings + per-tab override
+2. **Auto-Detection UI** - Warning dialog for missing {host} (Partially implemented)
+3. **Export Functionality** - Save results to file
+4. **Results Persistence** - Save/load from local storage
 
 ### Future Enhancements
-- Export functionality
-- Results persistence
-- Performance optimizations
+- Performance optimizations (virtual scrolling for large diffs)
 - Better error handling UI
+- History management
 
 ---
 
 ## 📦 Dependencies Added
 
-- `react-diff-viewer` - For diff rendering
+- `react-diff-viewer-continued` - For diff rendering
 - `react-syntax-highlighter` - For syntax highlighting
 - `jsonpath-plus` - For JSONPath filtering
 - `zustand` - For state management
@@ -53,9 +58,9 @@
 **Core Services**: ✅ Complete  
 **Input Components**: ✅ Complete
 **Execution Engine**: ✅ Complete
-**UI Integration**: 🚧 In Progress
-**Diff Viewer**: ⏳ Pending
+**UI Integration**: ✅ Complete
+**Diff Viewer**: ✅ Complete
 
 ---
 
-**Last Updated**: Implementation in progress
+**Last Updated**: Comparison View Implemented
