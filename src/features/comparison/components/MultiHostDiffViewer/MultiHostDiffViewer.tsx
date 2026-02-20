@@ -2,6 +2,9 @@ import { useState } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
 import type { ComparisonResult } from '@/shared/types'
 import { formatResponseData } from '../../services/diffService'
+import { replaceHostInParsedCurl } from '../../services/hostReplacer'
+import { parseHost } from '../../services/hostParser'
+import { parseCurl, formatParsedCurlToCommand } from '../../services/curlParser'
 import './MultiHostDiffViewer.css'
 
 const DIFF_STYLES = {
@@ -32,6 +35,7 @@ const DIFF_STYLES = {
 
 export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResult }) => {
   const [expandedHosts, setExpandedHosts] = useState<Record<string, boolean>>({})
+  const [copyStatus, setCopyStatus] = useState<Record<string, string>>({})
 
   const referenceHost = comparison.hostResponses.find(
     h => h.hostId === comparison.referenceHostId
@@ -49,6 +53,36 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
 
   const toggleExpand = (hostId: string) =>
     setExpandedHosts(prev => ({ ...prev, [hostId]: !prev[hostId] }))
+
+  const handleCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyStatus(prev => ({ ...prev, [id]: 'Copied!' }))
+      setTimeout(() => {
+        setCopyStatus(prev => {
+          const next = { ...prev }
+          delete next[id]
+          return next
+        })
+      }, 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      setCopyStatus(prev => ({ ...prev, [id]: 'Failed' }))
+    }
+  }
+
+  const getResolvedCurl = (hostValue: string) => {
+    try {
+      const parsedHost = parseHost(hostValue)
+      const parsedCurl = parseCurl(comparison.curlCommand)
+      const resolvedParsedCurl = replaceHostInParsedCurl(parsedCurl, parsedHost)
+      return formatParsedCurlToCommand(resolvedParsedCurl)
+    } catch (e) {
+      console.error('Failed to generate resolved cURL:', e)
+      // Fallback to simple replacement if complex parsing fails
+      return comparison.curlCommand.replace('{host}', hostValue)
+    }
+  }
 
   return (
     <div className="diff-pairs">
@@ -70,6 +104,24 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
                   <span className="diff-timing">{referenceHost.responseTime}ms</span>
                 )}
                 {refHasError && <span className="diff-badge diff-badge--error">FAILED</span>}
+                {!refHasError && (
+                  <>
+                    <button
+                      className="diff-copy-btn"
+                      onClick={() => handleCopy(getResolvedCurl(referenceHost.hostValue), `ref-curl-${host.hostId}`)}
+                      title="Copy cURL command"
+                    >
+                      {copyStatus[`ref-curl-${host.hostId}`] || '💻'}
+                    </button>
+                    <button
+                      className="diff-copy-btn"
+                      onClick={() => handleCopy(refData, `ref-json-${host.hostId}`)}
+                      title="Copy response JSON"
+                    >
+                      {copyStatus[`ref-json-${host.hostId}`] || '📋'}
+                    </button>
+                  </>
+                )}
               </div>
 
               <span className="diff-vs">vs</span>
@@ -80,6 +132,24 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
                   <span className="diff-timing">{host.responseTime}ms</span>
                 )}
                 {hostHasError && <span className="diff-badge diff-badge--error">FAILED</span>}
+                {!hostHasError && (
+                  <>
+                    <button
+                      className="diff-copy-btn"
+                      onClick={() => handleCopy(getResolvedCurl(host.hostValue), `host-curl-${host.hostId}`)}
+                      title="Copy cURL command"
+                    >
+                      {copyStatus[`host-curl-${host.hostId}`] || '💻'}
+                    </button>
+                    <button
+                      className="diff-copy-btn"
+                      onClick={() => handleCopy(hostData, `host-json-${host.hostId}`)}
+                      title="Copy response JSON"
+                    >
+                      {copyStatus[`host-json-${host.hostId}`] || '📋'}
+                    </button>
+                  </>
+                )}
               </div>
 
               <button

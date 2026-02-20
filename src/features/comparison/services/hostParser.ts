@@ -5,37 +5,46 @@
 
 export interface ParsedHost {
   original: string
-  normalized: string // Always a base URL like https://api.example.com
-  hostname: string // Just the hostname part
+  normalized: string // A base URL, like https://api.example.com/v1
+  hostname: string // Just the hostname part, e.g., api.example.com
 }
 
 /**
- * Parse and normalize host input
- * Supports: hostname, base URL, full URL
+ * Parse and normalize host input.
+ * Preserves the path from the input URL to use as a base.
  */
 export function parseHost(input: string): ParsedHost {
   const trimmed = input.trim()
-  
-  // If it's already a full URL, extract base URL
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    try {
-      const url = new URL(trimmed)
-      return {
-        original: trimmed,
-        normalized: `${url.protocol}//${url.host}`,
-        hostname: url.hostname
-      }
-    } catch {
-      // Invalid URL, treat as hostname
-    }
+  let urlString = trimmed
+
+  // If no protocol, default to https for URL parsing
+  if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+    urlString = `https://${urlString}`
   }
-  
-  // Treat as hostname, default to https
-  const hostname = trimmed.replace(/^https?:\/\//, '')
-  return {
-    original: trimmed,
-    normalized: `https://${hostname}`,
-    hostname
+
+  try {
+    const url = new URL(urlString)
+    
+    // Construct the base URL, including the path
+    let normalizedUrl = `${url.protocol}//${url.host}${url.pathname}`
+
+    // Remove trailing slash if it's not the root path
+    if (normalizedUrl.length > 1 && normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.slice(0, -1)
+    }
+    
+    return {
+      original: trimmed,
+      normalized: normalizedUrl,
+      hostname: url.hostname,
+    }
+  } catch {
+    // Fallback for simple hostnames that fail URL parsing
+    return {
+      original: trimmed,
+      normalized: `https://${trimmed}`,
+      hostname: trimmed,
+    }
   }
 }
 
@@ -63,18 +72,22 @@ export function validateHost(input: string): { valid: boolean; error?: string } 
     return { valid: false, error: 'Host cannot be empty' }
   }
   
-  const parsed = parseHost(input)
-  
-  // Basic hostname validation
-  if (!parsed.hostname || parsed.hostname.length === 0) {
+  try {
+    const parsed = parseHost(input)
+    
+    // Basic hostname validation
+    if (!parsed.hostname || parsed.hostname.length === 0) {
+      return { valid: false, error: 'Invalid host format' }
+    }
+    
+    // Check for valid hostname characters
+    const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+    if (!hostnameRegex.test(parsed.hostname) && !parsed.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
+      return { valid: false, error: 'Invalid hostname format' }
+    }
+    
+    return { valid: true }
+  } catch {
     return { valid: false, error: 'Invalid host format' }
   }
-  
-  // Check for valid hostname characters
-  const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-  if (!hostnameRegex.test(parsed.hostname) && !parsed.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
-    return { valid: false, error: 'Invalid hostname format' }
-  }
-  
-  return { valid: true }
 }

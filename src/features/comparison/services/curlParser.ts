@@ -54,18 +54,25 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     command = command.replace(bodyMatch[0], '')
   }
   
-  // Extract URL (should be the remaining part)
-  // Find URL pattern (http:// or https:// or starts with /)
-  const urlMatch = command.match(/(https?:\/\/[^\s]+|\/[^\s]*)/)
-  if (urlMatch) {
-    parsed.url = urlMatch[1].trim()
+  // Extract URL
+  const cleanCommand = command.trim()
+  
+  // 1. Check for quoted URL (single or double quotes)
+  // Matches 'url' or "url" and captures the content inside
+  const quotedUrlMatch = cleanCommand.match(/^(['"])(.*?)\1/)
+  if (quotedUrlMatch) {
+    parsed.url = quotedUrlMatch[2].trim()
   } else {
-    // Try to find any remaining non-flag text as URL
-    const remaining = command.trim().split(/\s+/).find(part => 
-      !part.startsWith('-') && part.length > 0
-    )
-    if (remaining) {
-      parsed.url = remaining
+    // 2. Fallback to finding http/https or path
+    const urlMatch = cleanCommand.match(/(https?:\/\/[^\s]+|\/[^\s]*)/)
+    if (urlMatch) {
+      parsed.url = urlMatch[1].trim()
+    } else {
+      // 3. Fallback: take the first non-empty token
+      const firstToken = cleanCommand.split(/\s+/)[0]
+      if (firstToken && !firstToken.startsWith('-')) {
+        parsed.url = firstToken
+      }
     }
   }
   
@@ -134,4 +141,31 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
   } catch (error) {
     return { valid: false, error: `Invalid cURL format: ${error instanceof Error ? error.message : 'Unknown error'}` }
   }
+}
+
+/**
+ * Formats a ParsedCurl object back into a cURL command string.
+ */
+export function formatParsedCurlToCommand(parsed: ParsedCurl): string {
+  // Escape single quotes in URL to prevent breaking the command
+  const safeUrl = parsed.url.replace(/'/g, "'\\''");
+  let command = `curl '${safeUrl}'`; 
+
+  if (parsed.method && parsed.method.toUpperCase() !== 'GET') {
+    command += ` -X ${parsed.method.toUpperCase()}`;
+  }
+
+  for (const key in parsed.headers) {
+    // Escape quotes in header values
+    const value = parsed.headers[key].replace(/'/g, "'\\''");
+    command += ` -H '${key}: ${value}'`;
+  }
+
+  if (parsed.body) {
+    // Escape quotes in body
+    const body = parsed.body.replace(/'/g, "'\\''");
+    command += ` -d '${body}'`;
+  }
+
+  return command;
 }
