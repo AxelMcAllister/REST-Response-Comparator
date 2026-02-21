@@ -159,19 +159,19 @@
     border-color: #94a3b8;
 }
 
-/* ─── Copy Button ────────────────────────────────────────────────────────── */
+/* ─── Copy buttons (header: cURL; panel title: JSON) ────────────────────────── */
 
 .diff-copy-btn {
     background: transparent;
     border: none;
     cursor: pointer;
-    font-size: 0.9rem;
-    padding: 0.2rem;
-    border-radius: 4px;
-    transition: background 0.15s;
-    display: flex;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.35rem;
     color: #64748b;
 }
 
@@ -180,9 +180,76 @@
     color: #334155;
 }
 
+.diff-copy-btn__icon {
+    flex-shrink: 0;
+    color: inherit;
+}
+
+.diff-copy-btn__icon--success {
+    color: #059669;
+}
+
+.diff-copy-btn__label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #059669;
+}
+
+/* Overlay copy JSON buttons: upper right of each panel, above content */
+.diff-copy-json-btn--overlay {
+    position: absolute;
+    top: 8px;
+    z-index: 5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.diff-copy-json-btn--overlay.diff-copy-json-btn--left {
+    right: calc(50% + 6px);
+}
+
+.diff-copy-json-btn--overlay.diff-copy-json-btn--right {
+    right: 8px;
+}
+
+.diff-copy-json-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.5rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.diff-copy-json-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.diff-copy-json-btn__icon {
+    flex-shrink: 0;
+    color: inherit;
+}
+
+.diff-copy-json-btn__icon--success {
+    color: #059669;
+}
+
+.diff-copy-json-btn__label {
+    color: #059669;
+}
+
 /* ─── Diff Viewer Wrapper ────────────────────────────────────────────────── */
 
 .diff-viewer-wrap {
+    position: relative;
     overflow-x: auto;
     /* Prevent the diff viewer from going too tall by default */
     max-height: 70vh;
@@ -206,4 +273,93 @@
     background: #fef2f2;
     color: #b91c1c;
     border-top: 1px solid #fecaca;
+}
+
+/* ─── Toolbar separator & JSONPath ───────────────────────────────────────── */
+
+.diff-toolbar-separator {
+    color: #cbd5e1;
+    font-weight: 300;
+}
+
+.diff-jsonpath-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.diff-jsonpath-input {
+    min-width: 12rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    font-family: ui-monospace, monospace;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+}
+
+.diff-jsonpath-input--error {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+.diff-jsonpath-clear {
+    padding: 0.2rem 0.4rem;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.diff-jsonpath-clear:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.diff-jsonpath-error {
+    font-size: 0.75rem;
+    color: #dc2626;
+}
+
+/* ─── JSONPath autocomplete dropdown ─────────────────────────────────────── */
+
+.diff-jsonpath-autocomplete {
+    position: relative;
+    display: inline-block;
+}
+
+.diff-jsonpath-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin: 2px 0 0;
+    padding: 0;
+    min-width: 100%;
+    max-height: 12rem;
+    overflow-y: auto;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    font-size: 0.8rem;
+    font-family: ui-monospace, monospace;
+}
+
+.diff-jsonpath-suggestions li {
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    color: #334155;
+}
+
+.diff-jsonpath-suggestions li:hover,
+.diff-jsonpath-suggestion--active {
+    background: #f1f5f9;
+}
+
+.diff-jsonpath-suggestions li.diff-jsonpath-suggestion--active {
+    background: #e0e7ff;
+    color: #3730a3;
 }

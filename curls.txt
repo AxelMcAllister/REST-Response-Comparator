@@ -1,0 +1,3 @@
+http://pito.com
+curl --location '{host}/item-history-api/public/v1/history/123?view=OPERATIONS'
+curl --location 'http://pito.com/item-history-api/public/v1/history/123?view=OPERATIONS'
