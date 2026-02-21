@@ -6,11 +6,10 @@ import './ComparisonTabs.css'
 
 /**
  * Generate a tab label from a comparison result.
- * Uses the cURL number (1-based) as the primary label.
- * Custom rename overrides take precedence via labelOverrides.
+ * Returns just the cURL number (1-based).
  */
 function getShortLabel(comparison: ComparisonResult): string {
-  return `cURL ${comparison.curlIndex + 1}`
+  return `${comparison.curlIndex + 1}`
 }
 
 export const ComparisonTabs = () => {
@@ -122,6 +121,7 @@ export const ComparisonTabs = () => {
           const label = labelOverrides[comparison.id] ?? generatedLabel
           const isActive = activeTabId === comparison.id
           const isDragOver = dragOverId === comparison.id
+          const hasError = comparison.hostResponses.some(hr => !!hr.error)
 
           return (
             <div
@@ -132,6 +132,7 @@ export const ComparisonTabs = () => {
                 'ctabs-tab',
                 isActive ? 'ctabs-tab--active' : '',
                 isDragOver ? 'ctabs-tab--drag-over' : '',
+                hasError ? 'ctabs-tab--error' : '',
               ].filter(Boolean).join(' ')}
               onClick={() => { if (!editingId) setActiveTabId(comparison.id) }}
               draggable

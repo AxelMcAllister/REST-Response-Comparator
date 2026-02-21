@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import HostInput from '@/features/comparison/components/HostInput/HostInput'
 import CurlInput from '@/features/comparison/components/CurlInput/CurlInput'
 import { ComparisonTabs } from '@/features/comparison/components/ComparisonTabs/ComparisonTabs'
+import { ConfigManager } from '@/features/comparison/components/ConfigManager/ConfigManager'
 import { useComparisonStore } from '@/features/comparison/store/comparisonStore'
 import { parseHosts } from '@/features/comparison/services/hostParser'
 import { useComparisonExecution } from '@/features/comparison/hooks/useComparisonExecution'
@@ -63,6 +64,7 @@ function App() {
         <p className="App-subtitle">
           Compare API responses across multiple hosts
         </p>
+        <ConfigManager />
       </header>
 
       <main className="App-main">

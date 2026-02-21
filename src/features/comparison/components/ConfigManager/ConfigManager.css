@@ -1,0 +1,64 @@
+.config-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.config-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.config-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: #f9fafb;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.config-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.config-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.config-btn-export {
+  color: #059669;
+}
+
+.config-btn-import {
+  color: #2563eb;
+}
+
+.config-message {
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: right;
+}
+
+.config-error {
+  color: #dc2626;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+.config-success {
+  color: #059669;
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+}

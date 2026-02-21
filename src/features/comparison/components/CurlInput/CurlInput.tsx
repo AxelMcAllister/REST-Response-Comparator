@@ -1,215 +1,184 @@
-import { useCallback, useRef, useState } from 'react'
-import { autoDetectHostPlaceholder, hasHostPlaceholder, validateCurl } from '../../services/curlParser'
+import { useState, useCallback, useRef } from 'react'
 import type { CurlCommand } from '@/shared/types'
+import { validateCurl, hasHostPlaceholder, autoDetectHostPlaceholder } from '../../services/curlParser'
 import './CurlInput.css'
 
-export interface CurlInputProps {
-    curlCommands: CurlCommand[]
-    onCurlCommandsChange: (commands: CurlCommand[]) => void
+interface CurlInputProps {
+  curlCommands: CurlCommand[]
+  onCurlCommandsChange: (commands: CurlCommand[]) => void
 }
 
-function generateId(): string {
-    return typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `curl-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
+export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlInputProps) {
+  const [mode, setMode] = useState<'textarea' | 'file'>('textarea')
+  const [textareaValue, setTextareaValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<{ original: string; detected: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-interface MissingHostState {
-    id: string
-    original: string
-    autoDetected: string
-}
+  const addCommands = useCallback((commands: string[]) => {
+    const newCommands: CurlCommand[] = []
+    const validationErrors: string[] = []
 
-export default function CurlInput({
-    curlCommands,
-    onCurlCommandsChange,
-}: Readonly<CurlInputProps>) {
-    const [missingHost, setMissingHost] = useState<MissingHostState | null>(null)
-    const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
-    const fileInputRef = useRef<HTMLInputElement>(null)
+    commands.forEach((cmd, index) => {
+      const trimmed = cmd.trim()
+      if (!trimmed) return
 
-    // ── Row operations ──────────────────────────────────────────────────────────
+      const validation = validateCurl(trimmed)
+      if (!validation.valid) {
+        validationErrors.push(`Command ${index + 1}: ${validation.error}`)
+        return
+      }
 
-    const handleAddRow = useCallback(() => {
-        const newCmd: CurlCommand = { id: generateId(), value: '' }
-        onCurlCommandsChange([...curlCommands, newCmd])
-    }, [curlCommands, onCurlCommandsChange])
+      if (!hasHostPlaceholder(trimmed)) {
+        const detected = autoDetectHostPlaceholder(trimmed)
+        setWarning({ original: trimmed, detected })
+        return // Stop processing to show warning
+      }
 
-    const handleRowChange = useCallback((id: string, value: string) => {
-        const updated = curlCommands.map(cmd => cmd.id === id ? { ...cmd, value } : cmd)
-        onCurlCommandsChange(updated)
-        // Clear row error as user types
-        if (rowErrors[id]) {
-            setRowErrors(prev => {
-                const next = { ...prev }
-                delete next[id]
-                return next
-            })
-        }
-    }, [curlCommands, onCurlCommandsChange, rowErrors])
+      newCommands.push({
+        id: `curl-${Date.now()}-${index}`,
+        value: trimmed
+      })
+    })
 
-    const handleRowBlur = useCallback((id: string, value: string) => {
-        if (!value.trim()) return
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('\n'))
+      return
+    }
 
-        const validation = validateCurl(value)
-        if (!validation.valid) {
-            setRowErrors(prev => ({ ...prev, [id]: validation.error ?? 'Invalid cURL command' }))
-            return
-        }
+    if (newCommands.length > 0) {
+      onCurlCommandsChange([...curlCommands, ...newCommands])
+      setTextareaValue('')
+      setError(null)
+    }
+  }, [curlCommands, onCurlCommandsChange])
 
-        if (!hasHostPlaceholder(value)) {
-            const autoDetected = autoDetectHostPlaceholder(value)
-            setMissingHost({ id, original: value, autoDetected })
-        }
-    }, [])
+  const handleAddFromTextarea = () => {
+    const commands = textareaValue.split('\n').filter(cmd => cmd.trim())
+    addCommands(commands)
+  }
 
-    const handleRemoveRow = useCallback((id: string) => {
-        onCurlCommandsChange(curlCommands.filter(cmd => cmd.id !== id))
-        setRowErrors(prev => {
-            const next = { ...prev }
-            delete next[id]
-            return next
-        })
-    }, [curlCommands, onCurlCommandsChange])
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    // ── Auto-detect modal ────────────────────────────────────────────────────────
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      const commands = content.split('\n').filter(cmd => cmd.trim())
+      addCommands(commands)
+    }
+    reader.readAsText(file)
+  }
 
-    const handleAcceptAutoDetect = useCallback(() => {
-        if (!missingHost) return
-        const updated = curlCommands.map(cmd =>
-            cmd.id === missingHost.id ? { ...cmd, value: missingHost.autoDetected } : cmd
-        )
-        onCurlCommandsChange(updated)
-        setMissingHost(null)
-    }, [missingHost, curlCommands, onCurlCommandsChange])
+  const handleRemoveCommand = (id: string) => {
+    onCurlCommandsChange(curlCommands.filter(c => c.id !== id))
+  }
 
-    const handleRejectAutoDetect = useCallback(() => {
-        setMissingHost(null)
-    }, [])
+  const handleWarningAccept = () => {
+    if (warning) {
+      const newCommand: CurlCommand = {
+        id: `curl-${Date.now()}`,
+        value: warning.detected
+      }
+      onCurlCommandsChange([...curlCommands, newCommand])
+      setWarning(null)
+    }
+  }
 
-    // ── File upload ──────────────────────────────────────────────────────────────
-
-    const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (!file) return
-
-        const reader = new FileReader()
-        reader.onload = (e) => {
-            const content = e.target?.result as string
-            if (!content) return
-
-            const lines = content
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0 && !line.startsWith('#'))
-
-            const newCommands: CurlCommand[] = lines
-                .filter(line => validateCurl(line).valid)
-                .map(line => ({
-                    id: generateId(),
-                    // Auto-apply {host} detection silently for bulk uploads
-                    value: hasHostPlaceholder(line) ? line : autoDetectHostPlaceholder(line),
-                }))
-
-            if (newCommands.length > 0) {
-                onCurlCommandsChange([...curlCommands, ...newCommands])
-            }
-
-            // Reset file input
-            if (fileInputRef.current) fileInputRef.current.value = ''
-        }
-        reader.onerror = () => {
-            console.error('Failed to read file')
-        }
-        reader.readAsText(file)
-    }, [curlCommands, onCurlCommandsChange])
-
-    // ── Render ───────────────────────────────────────────────────────────────────
-
-    return (
-        <div className="curl-input">
-            <div className="curl-input-header">
-                <label className="curl-input-label">cURL Commands</label>
-                <span className="curl-input-hint">
-                    Use <code>{'{host}'}</code> as placeholder for the host (e.g.{' '}
-                    <code>curl https://&#123;host&#125;/api/users</code>)
-                </span>
-            </div>
-
-            <div className="curl-input-rows">
-                {curlCommands.length === 0 && (
-                    <div className="curl-input-empty">
-                        No commands yet — click <strong>+ Add cURL</strong> to add one, or upload a file.
-                    </div>
-                )}
-
-                {curlCommands.map((cmd, index) => (
-                    <div key={cmd.id} className={`curl-row${rowErrors[cmd.id] ? ' curl-row-has-error' : ''}`}>
-                        <span className="curl-row-index">{index + 1}</span>
-                        <textarea
-                            className="curl-row-textarea"
-                            value={cmd.value}
-                            placeholder={`curl https://{host}/api/endpoint`}
-                            onChange={(e) => handleRowChange(cmd.id, e.target.value)}
-                            onBlur={(e) => handleRowBlur(cmd.id, e.target.value)}
-                            rows={1}
-                            spellCheck={false}
-                            aria-label={`cURL command ${index + 1}`}
-                        />
-                        <button
-                            type="button"
-                            className="curl-row-remove"
-                            onClick={() => handleRemoveRow(cmd.id)}
-                            title="Remove this command"
-                            aria-label={`Remove cURL command ${index + 1}`}
-                        >
-                            ×
-                        </button>
-                        {rowErrors[cmd.id] && (
-                            <p className="curl-row-error-msg" role="alert">{rowErrors[cmd.id]}</p>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            <div className="curl-input-actions">
-                <button type="button" className="curl-add-btn" onClick={handleAddRow}>
-                    + Add cURL
-                </button>
-                <label className="curl-upload-btn">
-                    📁 Upload File
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".txt,.curl"
-                        onChange={handleFileUpload}
-                        style={{ display: 'none' }}
-                    />
-                </label>
-            </div>
-
-            {/* Missing {host} modal */}
-            {missingHost && (
-                <div className="curl-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="curl-modal-title">
-                    <div className="curl-modal">
-                        <h3 className="curl-modal-title" id="curl-modal-title">
-                            Missing <code>{'{host}'}</code> Placeholder
-                        </h3>
-                        <p>This command doesn't contain a <code>{'{host}'}</code> placeholder:</p>
-                        <pre className="curl-modal-code">{missingHost.original}</pre>
-                        <p>Suggested replacement (hostname extracted automatically):</p>
-                        <pre className="curl-modal-code curl-modal-code-detected">{missingHost.autoDetected}</pre>
-                        <div className="curl-modal-actions">
-                            <button type="button" className="curl-modal-cancel" onClick={handleRejectAutoDetect}>
-                                Cancel
-                            </button>
-                            <button type="button" className="curl-modal-accept" onClick={handleAcceptAutoDetect}>
-                                Accept &amp; Apply
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="curl-input">
+      <div className="curl-input-header">
+        <label>cURL Commands</label>
+        <div className="curl-mode-toggle">
+          <button
+            className={mode === 'textarea' ? 'active' : ''}
+            onClick={() => setMode('textarea')}
+          >
+            Text
+          </button>
+          <button
+            className={mode === 'file' ? 'active' : ''}
+            onClick={() => setMode('file')}
+          >
+            File
+          </button>
         </div>
-    )
+      </div>
+
+      {mode === 'textarea' ? (
+        <div className="curl-textarea-section">
+          <textarea
+            className="curl-textarea"
+            placeholder="Paste cURL commands here, one per line. Use {host} as a placeholder for hosts."
+            value={textareaValue}
+            onChange={(e) => setTextareaValue(e.target.value)}
+          />
+          <button
+            className="curl-add-button"
+            onClick={handleAddFromTextarea}
+          >
+            Add cURL Commands
+          </button>
+        </div>
+      ) : (
+        <div className="curl-file-section">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".txt,.sh"
+            style={{ display: 'none' }}
+          />
+          <button
+            className="curl-file-button"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Select File
+          </button>
+          <p>Upload a text file with one cURL command per line.</p>
+        </div>
+      )}
+
+      {error && <div className="curl-error">{error}</div>}
+
+      {curlCommands.length > 0 && (
+        <div className="curl-list">
+          <h4>Added Commands</h4>
+          <ul>
+            {curlCommands.map((cmd, index) => (
+              <li key={cmd.id}>
+                <span className="curl-line-number">{index + 1}</span>
+                <code className="curl-command-value">{cmd.value}</code>
+                <button
+                  className="curl-remove-button"
+                  onClick={() => handleRemoveCommand(cmd.id)}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {warning && (
+        <div className="App-warning-modal">
+          <div className="App-warning-content">
+            <h3>Missing {`{host}`} Placeholder</h3>
+            <p>The cURL command you entered does not contain the {`{host}`} placeholder.</p>
+            <p><strong>Original command:</strong></p>
+            <code>{warning.original}</code>
+            <p>We can attempt to automatically detect and replace the hostname for you:</p>
+            <p><strong>Suggested command:</strong></p>
+            <code>{warning.detected}</code>
+            <div className="App-warning-actions">
+              <button onClick={handleWarningAccept}>Accept & Add</button>
+              <button onClick={() => setWarning(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }

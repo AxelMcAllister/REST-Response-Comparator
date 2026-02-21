@@ -10,6 +10,7 @@ import { parseHosts } from '../services/hostParser'
 interface ComparisonStore {
   // Hosts
   hosts: Host[]
+  setHosts: (hosts: Host[]) => void
   addHosts: (hostInputs: string[]) => void
   removeHost: (id: string) => void
   updateHost: (id: string, value: string) => void
@@ -50,6 +51,7 @@ const defaultOptions: ComparisonOptions = {
 export const useComparisonStore = create<ComparisonStore>((set, get) => ({
   // Hosts
   hosts: [],
+  setHosts: (hosts) => set({ hosts }),
   addHosts: (hostInputs) => {
     const parsed = parseHosts(hostInputs)
     const hasReference = get().hosts.some(h => h.isReference)
