@@ -1,11 +1,27 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
 import type { ComparisonResult } from '@/shared/types'
 import { formatResponseData, sortJsonKeys, sortJsonKeysCommonFirst, applyJsonPath } from '../../services/diffService'
+import { parseJsonPathInput, getJsonPathSuggestions, buildLineToPathMap } from '../../services/jsonPathSuggestions'
 import { replaceHostInParsedCurl } from '../../services/hostReplacer'
 import { parseHost } from '../../services/hostParser'
 import { parseCurl, formatParsedCurlToCommand } from '../../services/curlParser'
 import './MultiHostDiffViewer.css'
+
+/** Copy to clipboard icon (outline, 20×20) */
+const CopyIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+)
+
+/** Checkmark for "Copied" state (20×20) */
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+)
 
 const DIFF_STYLES = {
   variables: {
@@ -38,6 +54,10 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
   const [copyStatus, setCopyStatus] = useState<Record<string, string>>({})
   const [sortMode, setSortMode] = useState<'original' | 'alpha' | 'common-first'>('original')
   const [jsonPath, setJsonPath] = useState('')
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [highlightIndex, setHighlightIndex] = useState(0)
+  const jsonPathInputRef = useRef<HTMLInputElement>(null)
+  const suggestionsListRef = useRef<HTMLUListElement>(null)
 
   /** Parse raw response data to a JS value (handles string JSON or object). */
   const parseResponseData = (data: unknown): unknown => {
@@ -46,6 +66,32 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     }
     return data
   }
+
+  // All response bodies in this tab (for JSONPath autocomplete)
+  const responseDataList = useMemo(() => {
+    return comparison.hostResponses
+      .map(hr => hr.response?.data)
+      .filter((d): d is unknown => d !== undefined && d !== null)
+  }, [comparison.hostResponses])
+
+  const { pathPrefix, partial } = parseJsonPathInput(jsonPath)
+  const suggestions = useMemo(() => {
+    if (responseDataList.length === 0) return []
+    return getJsonPathSuggestions(responseDataList, pathPrefix, partial)
+  }, [responseDataList, pathPrefix, partial])
+
+  const showSuggestions = suggestionsOpen && suggestions.length > 0
+  const effectiveHighlightIndex = Math.min(highlightIndex, Math.max(0, suggestions.length - 1))
+
+  useEffect(() => {
+    if (!showSuggestions) setHighlightIndex(0)
+  }, [showSuggestions, suggestions.length])
+
+  useEffect(() => {
+    if (!showSuggestions || !suggestionsListRef.current) return
+    const el = suggestionsListRef.current.children[effectiveHighlightIndex] as HTMLElement | undefined
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [showSuggestions, effectiveHighlightIndex])
 
   /**
    * Apply sort + JSONPath filter to a pair of parsed values.
@@ -147,6 +193,36 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     }
   }
 
+  const applySuggestion = (suggestion: string) => {
+    const sep = pathPrefix === '$' || pathPrefix.endsWith('[*]') ? '' : '.'
+    const newPath = pathPrefix + sep + suggestion + (suggestion !== '[*]' ? '.' : '')
+    setJsonPath(newPath)
+    setSuggestionsOpen(false)
+    jsonPathInputRef.current?.focus()
+  }
+
+  const handleJsonPathKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightIndex(i => Math.min(i + 1, suggestions.length - 1))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightIndex(i => Math.max(i - 1, 0))
+      return
+    }
+    if (e.key === 'Enter' && suggestions[effectiveHighlightIndex] != null) {
+      e.preventDefault()
+      applySuggestion(suggestions[effectiveHighlightIndex])
+      return
+    }
+    if (e.key === 'Escape') {
+      setSuggestionsOpen(false)
+    }
+  }
+
   // Compute filter error from the first host pair (all pairs share the same expression)
   const filterError: string | null = (() => {
     if (!jsonPath.trim() || otherHosts.length === 0) return null
@@ -157,6 +233,38 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     )
     return fe ?? null
   })()
+
+  // Line number (left pane) -> JSONPath map for clicking line numbers to set filter
+  const lineToPathMap = useMemo(() => {
+    let refVal: unknown = parseResponseData(referenceHost.response?.data)
+    if (refVal === undefined || refVal === null) return new Map<number, string>()
+    if (sortMode === 'common-first' && otherHosts[0]?.response?.data != null) {
+      const [left] = sortJsonKeysCommonFirst(refVal, parseResponseData(otherHosts[0].response?.data))
+      refVal = left
+    } else if (sortMode === 'alpha') {
+      refVal = sortJsonKeys(refVal)
+    }
+    if (jsonPath.trim()) {
+      const res = applyJsonPath(refVal, jsonPath)
+      if (!res.error) refVal = res.result
+    }
+    return buildLineToPathMap(refVal, jsonPath.trim() || '$')
+  }, [referenceHost.response?.data, otherHosts, sortMode, jsonPath])
+
+  const handleLineNumberClick = useCallback(
+    (lineId: string, rightLineToPathMap?: Map<number, string>) => {
+      const isLeft = lineId.startsWith('L-')
+      const isRight = lineId.startsWith('R-')
+      if (!isLeft && !isRight) return
+      const lineNum = parseInt(lineId.slice(2), 10)
+      if (!Number.isFinite(lineNum)) return
+      const path = isLeft
+        ? lineToPathMap.get(lineNum)
+        : rightLineToPathMap?.get(lineNum)
+      if (path != null) setJsonPath(path)
+    },
+    [lineToPathMap]
+  )
 
   return (
     <div className="diff-pairs">
@@ -186,21 +294,53 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
         <span className="diff-toolbar-separator">|</span>
         <span className="diff-toolbar-label">JSONPath:</span>
         <div className="diff-jsonpath-wrap">
-          <input
-            type="text"
-            className={`diff-jsonpath-input${filterError ? ' diff-jsonpath-input--error' : ''}`}
-            placeholder="$.items[*].id"
-            value={jsonPath}
-            onChange={e => {
-              setJsonPath(e.target.value)
-              setJsonPathError(null)
-            }}
-            spellCheck={false}
-          />
+          <div className="diff-jsonpath-autocomplete">
+            <input
+              ref={jsonPathInputRef}
+              type="text"
+              className={`diff-jsonpath-input${filterError ? ' diff-jsonpath-input--error' : ''}`}
+              placeholder="$.items[*].id"
+              value={jsonPath}
+              onChange={e => {
+                setJsonPath(e.target.value)
+                setSuggestionsOpen(true)
+              }}
+              onFocus={() => suggestions.length > 0 && setSuggestionsOpen(true)}
+              onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
+              onKeyDown={handleJsonPathKeyDown}
+              spellCheck={false}
+              autoComplete="off"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions}
+              aria-controls="diff-jsonpath-suggestions"
+              aria-activedescendant={showSuggestions && suggestions[effectiveHighlightIndex] != null ? `diff-jsonpath-suggestion-${effectiveHighlightIndex}` : undefined}
+            />
+            {showSuggestions && (
+              <ul
+                id="diff-jsonpath-suggestions"
+                ref={suggestionsListRef}
+                className="diff-jsonpath-suggestions"
+                role="listbox"
+              >
+                {suggestions.map((s, i) => (
+                  <li
+                    key={s}
+                    id={`diff-jsonpath-suggestion-${i}`}
+                    role="option"
+                    aria-selected={i === effectiveHighlightIndex}
+                    className={i === effectiveHighlightIndex ? 'diff-jsonpath-suggestion--active' : ''}
+                    onMouseDown={e => { e.preventDefault(); applySuggestion(s) }}
+                  >
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           {jsonPath && (
             <button
               className="diff-jsonpath-clear"
-              onClick={() => { setJsonPath(''); }}
+              onClick={() => { setJsonPath(''); setSuggestionsOpen(false); }}
               title="Clear filter"
             >✕</button>
           )}
@@ -220,6 +360,28 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
         const refData = refText
         const hostData = hostText
 
+        // Right pane line number -> JSONPath map (from this host's displayed value)
+        let hostVal: unknown = parseResponseData(host.response?.data)
+        if (hostVal !== undefined && hostVal !== null) {
+          if (sortMode === 'common-first') {
+            const [, right] = sortJsonKeysCommonFirst(
+              parseResponseData(referenceHost.response?.data),
+              hostVal
+            )
+            hostVal = right
+          } else if (sortMode === 'alpha') {
+            hostVal = sortJsonKeys(hostVal)
+          }
+          if (jsonPath.trim()) {
+            const res = applyJsonPath(hostVal, jsonPath)
+            if (!res.error) hostVal = res.result
+          }
+        }
+        const rightLineToPathMap =
+          hostVal !== undefined && hostVal !== null
+            ? buildLineToPathMap(hostVal, jsonPath.trim() || '$')
+            : new Map<number, string>()
+
         return (
           <div key={host.hostId} className="diff-pair">
             {/* Header */}
@@ -232,22 +394,19 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
                 )}
                 {refHasError && <span className="diff-badge diff-badge--error">FAILED</span>}
                 {!refHasError && (
-                  <>
-                    <button
-                      className="diff-copy-btn"
-                      onClick={() => handleCopy(getResolvedCurl(referenceHost.hostValue), `ref-curl-${host.hostId}`)}
-                      title="Copy cURL command"
-                    >
-                      {copyStatus[`ref-curl-${host.hostId}`] || '💻'}
-                    </button>
-                    <button
-                      className="diff-copy-btn"
-                      onClick={() => handleCopy(refData, `ref-json-${host.hostId}`)}
-                      title="Copy response JSON"
-                    >
-                      {copyStatus[`ref-json-${host.hostId}`] || '📋'}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="diff-copy-btn diff-copy-btn--curl"
+                    onClick={() => handleCopy(getResolvedCurl(referenceHost.hostValue), `ref-curl-${host.hostId}`)}
+                    title="Copy cURL command"
+                  >
+                    {copyStatus[`ref-curl-${host.hostId}`] ? (
+                      <CheckIcon className="diff-copy-btn__icon diff-copy-btn__icon--success" />
+                    ) : (
+                      <CopyIcon className="diff-copy-btn__icon" />
+                    )}
+                    {copyStatus[`ref-curl-${host.hostId}`] && <span className="diff-copy-btn__label">Copied</span>}
+                  </button>
                 )}
               </div>
 
@@ -260,22 +419,19 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
                 )}
                 {hostHasError && <span className="diff-badge diff-badge--error">FAILED</span>}
                 {!hostHasError && (
-                  <>
-                    <button
-                      className="diff-copy-btn"
-                      onClick={() => handleCopy(getResolvedCurl(host.hostValue), `host-curl-${host.hostId}`)}
-                      title="Copy cURL command"
-                    >
-                      {copyStatus[`host-curl-${host.hostId}`] || '💻'}
-                    </button>
-                    <button
-                      className="diff-copy-btn"
-                      onClick={() => handleCopy(hostData, `host-json-${host.hostId}`)}
-                      title="Copy response JSON"
-                    >
-                      {copyStatus[`host-json-${host.hostId}`] || '📋'}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="diff-copy-btn diff-copy-btn--curl"
+                    onClick={() => handleCopy(getResolvedCurl(host.hostValue), `host-curl-${host.hostId}`)}
+                    title="Copy cURL command"
+                  >
+                    {copyStatus[`host-curl-${host.hostId}`] ? (
+                      <CheckIcon className="diff-copy-btn__icon diff-copy-btn__icon--success" />
+                    ) : (
+                      <CopyIcon className="diff-copy-btn__icon" />
+                    )}
+                    {copyStatus[`host-curl-${host.hostId}`] && <span className="diff-copy-btn__label">Copied</span>}
+                  </button>
                 )}
               </div>
 
@@ -299,16 +455,45 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
                 <strong>{host.hostValue} failed:</strong> {host.error}
               </div>
             ) : (
-              <div className="diff-viewer-wrap">
+              <div className="diff-viewer-wrap" title="Click a line number (left or right) to filter by that JSON path">
                 <ReactDiffViewer
                   oldValue={refData}
                   newValue={hostData}
                   splitView={true}
                   useDarkTheme={false}
                   styles={DIFF_STYLES}
-                  // When not expanded: show only 3 context lines around each diff
                   extraLinesSurroundingDiff={isExpanded ? 99999 : 3}
+                  onLineNumberClick={(lineId, e) => {
+                    e.preventDefault()
+                    handleLineNumberClick(lineId, rightLineToPathMap)
+                  }}
                 />
+                <button
+                  type="button"
+                  className="diff-copy-json-btn diff-copy-json-btn--overlay diff-copy-json-btn--left"
+                  onClick={() => handleCopy(refData, `ref-json-${host.hostId}`)}
+                  title="Copy response JSON"
+                >
+                  {copyStatus[`ref-json-${host.hostId}`] ? (
+                    <CheckIcon className="diff-copy-json-btn__icon diff-copy-json-btn__icon--success" />
+                  ) : (
+                    <CopyIcon className="diff-copy-json-btn__icon" />
+                  )}
+                  {copyStatus[`ref-json-${host.hostId}`] && <span className="diff-copy-json-btn__label">Copied</span>}
+                </button>
+                <button
+                  type="button"
+                  className="diff-copy-json-btn diff-copy-json-btn--overlay diff-copy-json-btn--right"
+                  onClick={() => handleCopy(hostData, `host-json-${host.hostId}`)}
+                  title="Copy response JSON"
+                >
+                  {copyStatus[`host-json-${host.hostId}`] ? (
+                    <CheckIcon className="diff-copy-json-btn__icon diff-copy-json-btn__icon--success" />
+                  ) : (
+                    <CopyIcon className="diff-copy-json-btn__icon" />
+                  )}
+                  {copyStatus[`host-json-${host.hostId}`] && <span className="diff-copy-json-btn__label">Copied</span>}
+                </button>
               </div>
             )}
           </div>
