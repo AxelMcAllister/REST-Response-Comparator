@@ -1,0 +1,166 @@
+/* ─── Pairs Container ────────────────────────────────────────────────────── */
+
+.diff-pairs {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.25rem;
+}
+
+/* ─── Individual Pair ────────────────────────────────────────────────────── */
+
+.diff-pair {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* ─── Pair Header ────────────────────────────────────────────────────────── */
+
+.diff-pair-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+.diff-host-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.diff-host-info--ref {
+    color: #4f46e5;
+}
+
+.diff-ref-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: #ede9fe;
+    color: #5b21b6;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.diff-host-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diff-host-info--ref .diff-host-name {
+    color: #3730a3;
+}
+
+.diff-timing {
+    font-size: 0.72rem;
+    color: #6b7280;
+    background: #f1f5f9;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.diff-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.diff-badge--error {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.diff-vs {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+/* ─── Expand Button ──────────────────────────────────────────────────────── */
+
+.diff-expand-btn {
+    margin-left: auto;
+    padding: 0.3rem 0.75rem;
+    background: white;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+}
+
+.diff-expand-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* ─── Copy Button ────────────────────────────────────────────────────────── */
+
+.diff-copy-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.2rem;
+    border-radius: 4px;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+}
+
+.diff-copy-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+/* ─── Diff Viewer Wrapper ────────────────────────────────────────────────── */
+
+.diff-viewer-wrap {
+    overflow-x: auto;
+    /* Prevent the diff viewer from going too tall by default */
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* ─── State Messages ─────────────────────────────────────────────────────── */
+
+.diff-state {
+    padding: 1.25rem 1.5rem;
+    font-size: 0.875rem;
+}
+
+.diff-state--info {
+    color: #64748b;
+    font-style: italic;
+    text-align: center;
+}
+
+.diff-state--error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-top: 1px solid #fecaca;
+}
