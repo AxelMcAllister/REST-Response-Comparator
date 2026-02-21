@@ -6,15 +6,66 @@
 import type { ParsedCurl } from '@/shared/types'
 
 /**
+ * Recognized curl flags (long and short forms).
+ * Unknown flags will cause validation to fail.
+ */
+const KNOWN_CURL_FLAGS = new Set([
+  '-X', '--request',
+  '-H', '--header',
+  '-d', '--data', '--data-raw', '--data-binary', '--data-urlencode',
+  '-u', '--user',
+  '-A', '--user-agent',
+  '-e', '--referer',
+  '-L', '--location',
+  '-k', '--insecure',
+  '-m', '--max-time',
+  '--connect-timeout',
+  '-o', '--output',
+  '-s', '--silent',
+  '-v', '--verbose',
+  '-b', '--cookie',
+  '-c', '--cookie-jar',
+  '--compressed',
+  '--http1.0', '--http1.1', '--http2',
+  '-G', '--get',
+  '--url',
+  '-F', '--form',
+  '--json',
+  '-I', '--head',
+  '-T', '--upload-file',
+])
+
+/**
+ * Normalize a (possibly multiline) curl command into a single line.
+ * Lines ending with " \\" (backslash continuation) are joined.
+ */
+export function normalizeCurlCommand(raw: string): string {
+  return raw
+    .split('\n')
+    .map(line => line.trimEnd())
+    .reduce<string[]>((acc, line) => {
+      if (line.endsWith('\\')) {
+        acc.push(line.slice(0, -1).trimEnd())
+      } else {
+        acc.push(line)
+      }
+      return acc
+    }, [])
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
  * Parse a cURL command string
  * Supports: method, URL, headers, body
  */
 export function parseCurl(curlCommand: string): ParsedCurl {
-  const trimmed = curlCommand.trim()
-  
+  const trimmed = normalizeCurlCommand(curlCommand)
+
   // Remove 'curl' prefix if present
   let command = trimmed.replace(/^curl\s+/, '')
-  
+
   const parsed: ParsedCurl = {
     url: '',
     method: 'GET',
@@ -22,19 +73,19 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     body: undefined,
     originalCurl: trimmed
   }
-  
+
   // Extract method (-X flag)
   const methodMatch = command.match(/-X\s+(\w+)/i)
   if (methodMatch) {
     parsed.method = methodMatch[1].toUpperCase()
     command = command.replace(methodMatch[0], '')
   }
-  
+
   // Extract headers (-H flags)
   // Use matchAll to find all headers without modifying the string in the loop
   const headerRegex = /-H\s+['"]([^'"]+)['"]/g
   const headerMatches = [...command.matchAll(headerRegex)]
-  
+
   headerMatches.forEach(match => {
     const header = match[1]
     const colonIndex = header.indexOf(':')
@@ -46,17 +97,17 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     // Remove the header from command string to clean it up for URL extraction
     command = command.replace(match[0], '')
   })
-  
+
   // Extract body (-d or --data flag)
   const bodyMatch = command.match(/(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+([^\s]+)/)
   if (bodyMatch) {
     parsed.body = bodyMatch[1] || bodyMatch[2]
     command = command.replace(bodyMatch[0], '')
   }
-  
+
   // Extract URL
   const cleanCommand = command.trim()
-  
+
   // 1. Check for quoted URL (single or double quotes)
   // Matches 'url' or "url" and captures the content inside
   const quotedUrlMatch = cleanCommand.match(/^(['"])(.*?)\1/)
@@ -75,7 +126,7 @@ export function parseCurl(curlCommand: string): ParsedCurl {
       }
     }
   }
-  
+
   return parsed
 }
 
@@ -91,56 +142,79 @@ export function hasHostPlaceholder(curlCommand: string): boolean {
  * Attempts to find hostname in URL and replace with {host}
  */
 export function autoDetectHostPlaceholder(curlCommand: string): string {
-  // Try to find URL pattern and replace hostname
-  const urlPattern = /(https?:\/\/)([^\/\s]+)(\/.*)?/
+  // Replace the full "protocol://hostname" with {host} so the placeholder is
+  // protocol-agnostic. The host value (which already includes its own protocol)
+  // will be substituted directly at {host}, avoiding any protocol duplication.
+  const urlPattern = /(https?:\/\/)([^/\s'"]+)(\/[^\s'"]*)?/
   const match = urlPattern.exec(curlCommand)
-  
+
   if (match) {
     const protocol = match[1]
     const hostname = match[2]
     const path = match[3] || ''
-    
-    // Replace hostname with {host}
-    // We construct the full URL to ensure we replace the correct part
-    const fullUrl = `${protocol}${hostname}${path}`
-    const newUrl = `${protocol}{host}${path}`
-    
-    return curlCommand.replace(fullUrl, newUrl)
+
+    const fullOrigin = `${protocol}${hostname}`
+    return curlCommand.replace(fullOrigin + path, `{host}${path}`)
   }
-  
-  // If no URL pattern found, try to find hostname-like pattern
-  // This is a fallback and might be risky, but useful for partial cURLs
+
+  // Fallback: replace a bare hostname-like token
   const hostnamePattern = /([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+)/
   const hostnameMatch = hostnamePattern.exec(curlCommand)
-  
   if (hostnameMatch) {
-    // Only replace if it looks like a host and not part of a flag
     return curlCommand.replace(hostnameMatch[1], '{host}')
   }
-  
-  // If we can't detect, return original
+
   return curlCommand
 }
 
+
 /**
- * Validate cURL command format
+ * Validate cURL command format.
+ * Checks:
+ *  1. Non-empty
+ *  2. Starts with "curl"
+ *  3. No unrecognized flags
+ *  4. Contains a URL
  */
 export function validateCurl(curlCommand: string): { valid: boolean; error?: string } {
   if (!curlCommand || !curlCommand.trim()) {
     return { valid: false, error: 'cURL command cannot be empty' }
   }
-  
+
+  const normalized = normalizeCurlCommand(curlCommand)
+
+  // 1. Must start with 'curl'
+  if (!/^curl(\s|$)/i.test(normalized)) {
+    return { valid: false, error: "cURL command must start with 'curl'" }
+  }
+
+  // 2. Check for unknown flags
+  //    Strip curl keyword, all quoted strings (flag values/URLs), and bare URLs
+  //    so only flag tokens remain for inspection.
+  let stripped = normalized.replace(/^curl\s*/i, '')
+  stripped = stripped.replace(/(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '')
+  stripped = stripped.replace(/https?:\/\/\S+/g, '')
+
+  const tokens = stripped.trim().split(/\s+/).filter(Boolean)
+  for (const token of tokens) {
+    if (token.startsWith('-')) {
+      if (!KNOWN_CURL_FLAGS.has(token)) {
+        return { valid: false, error: `Unrecognized curl option: '${token}'` }
+      }
+    }
+  }
+
+  // 3. Must contain a parseable URL
   try {
-    const parsed = parseCurl(curlCommand)
-    
+    const parsed = parseCurl(normalized)
     if (!parsed.url) {
       return { valid: false, error: 'cURL command must contain a URL' }
     }
-    
-    return { valid: true }
   } catch (error) {
     return { valid: false, error: `Invalid cURL format: ${error instanceof Error ? error.message : 'Unknown error'}` }
   }
+
+  return { valid: true }
 }
 
 /**
@@ -149,7 +223,7 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
 export function formatParsedCurlToCommand(parsed: ParsedCurl): string {
   // Escape single quotes in URL to prevent breaking the command
   const safeUrl = parsed.url.replace(/'/g, "'\\''");
-  let command = `curl '${safeUrl}'`; 
+  let command = `curl '${safeUrl}'`;
 
   if (parsed.method && parsed.method.toUpperCase() !== 'GET') {
     command += ` -X ${parsed.method.toUpperCase()}`;

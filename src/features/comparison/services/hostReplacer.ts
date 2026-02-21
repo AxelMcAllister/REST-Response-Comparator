@@ -14,17 +14,11 @@ export function replaceHostInCurl(
   curlCommand: string,
   host: ParsedHost
 ): string {
-  // Check if cURL has protocol
-  const hasProtocol = /https?:\/\//.test(curlCommand)
-  
-  if (hasProtocol) {
-    // cURL already has protocol, so just replace {host} with hostname
-    return curlCommand.replace(/\{host\}/g, host.hostname)
-  } else {
-    // No protocol in cURL, replace {host} with full normalized URL (includes protocol)
-    return curlCommand.replace(/\{host\}/g, host.normalized)
-  }
+  // {host} in the template is now always protocol-free (e.g. {host}/path),
+  // so we always substitute the full normalized URL (e.g. https://api.example.com).
+  return curlCommand.replace(/\{host\}/g, host.normalized)
 }
+
 
 /**
  * Replace {host} in parsed cURL URL, ensuring the final URL is absolute and correctly formed.
@@ -35,30 +29,19 @@ export function replaceHostInParsedCurl(
 ): ParsedCurl {
   const urlToResolve = parsedCurl.url;
 
-  // Case 1: URL has protocol (e.g. https://{host}/foo)
-  // We only replace {host} with the hostname.
-  if (/^https?:\/\//i.test(urlToResolve)) {
-    return {
-      ...parsedCurl,
-      url: urlToResolve.replace('{host}', host.hostname)
-    };
-  }
-
-  // Case 2: URL has {host} placeholder
-  // We perform a smart join of the host base URL and the path suffix.
+  // Case 1 & 2: URL contains {host} placeholder (template is now always protocol-free,
+  // e.g. {host}/path). Substitute with the full normalized host URL which includes protocol.
   if (urlToResolve.includes('{host}')) {
     const parts = urlToResolve.split('{host}');
     const suffix = parts[1] || '';
-    
-    // Smart join: Ensure exactly one slash between base and suffix
-    // 1. Remove trailing slashes from base
+
+    // Smart join: exactly one slash between base and suffix
     const base = host.normalized.replace(/\/+$/, '');
-    // 2. Remove leading slashes from suffix
     const path = suffix.replace(/^\/+/, '');
-    
+
     return {
       ...parsedCurl,
-      url: `${base}/${path}`
+      url: path ? `${base}/${path}` : base
     };
   }
 

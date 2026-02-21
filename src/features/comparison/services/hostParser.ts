@@ -17,14 +17,14 @@ export function parseHost(input: string): ParsedHost {
   const trimmed = input.trim()
   let urlString = trimmed
 
-  // If no protocol, default to https for URL parsing
+  // If no protocol, default to http:// (user expectation)
   if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
-    urlString = `https://${urlString}`
+    urlString = `http://${urlString}`
   }
 
   try {
     const url = new URL(urlString)
-    
+
     // Construct the base URL, including the path
     let normalizedUrl = `${url.protocol}//${url.host}${url.pathname}`
 
@@ -32,7 +32,7 @@ export function parseHost(input: string): ParsedHost {
     if (normalizedUrl.length > 1 && normalizedUrl.endsWith('/')) {
       normalizedUrl = normalizedUrl.slice(0, -1)
     }
-    
+
     return {
       original: trimmed,
       normalized: normalizedUrl,
@@ -42,7 +42,7 @@ export function parseHost(input: string): ParsedHost {
     // Fallback for simple hostnames that fail URL parsing
     return {
       original: trimmed,
-      normalized: `https://${trimmed}`,
+      normalized: `http://${trimmed}`,
       hostname: trimmed,
     }
   }
@@ -55,7 +55,7 @@ export function parseHosts(input: string | string[]): ParsedHost[] {
   if (Array.isArray(input)) {
     return input.map(parseHost)
   }
-  
+
   // Split by comma and filter empty strings
   return input
     .split(',')
@@ -71,21 +71,21 @@ export function validateHost(input: string): { valid: boolean; error?: string } 
   if (!input || !input.trim()) {
     return { valid: false, error: 'Host cannot be empty' }
   }
-  
+
   try {
     const parsed = parseHost(input)
-    
+
     // Basic hostname validation
     if (!parsed.hostname || parsed.hostname.length === 0) {
       return { valid: false, error: 'Invalid host format' }
     }
-    
+
     // Check for valid hostname characters
     const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
     if (!hostnameRegex.test(parsed.hostname) && !parsed.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
       return { valid: false, error: 'Invalid hostname format' }
     }
-    
+
     return { valid: true }
   } catch {
     return { valid: false, error: 'Invalid host format' }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
 import type { ComparisonResult } from '@/shared/types'
-import { formatResponseData } from '../../services/diffService'
+import { formatResponseData, sortJsonKeys, sortJsonKeysCommonFirst, applyJsonPath } from '../../services/diffService'
 import { replaceHostInParsedCurl } from '../../services/hostReplacer'
 import { parseHost } from '../../services/hostParser'
 import { parseCurl, formatParsedCurlToCommand } from '../../services/curlParser'
@@ -36,6 +36,69 @@ const DIFF_STYLES = {
 export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResult }) => {
   const [expandedHosts, setExpandedHosts] = useState<Record<string, boolean>>({})
   const [copyStatus, setCopyStatus] = useState<Record<string, string>>({})
+  const [sortMode, setSortMode] = useState<'original' | 'alpha' | 'common-first'>('original')
+  const [jsonPath, setJsonPath] = useState('')
+
+  /** Parse raw response data to a JS value (handles string JSON or object). */
+  const parseResponseData = (data: unknown): unknown => {
+    if (typeof data === 'string') {
+      try { return JSON.parse(data) } catch { return data }
+    }
+    return data
+  }
+
+  /**
+   * Apply sort + JSONPath filter to a pair of parsed values.
+   * Returns { refText, hostText, filterError? }
+   */
+  const buildDiffTexts = (
+    refRaw: unknown,
+    hostRaw: unknown
+  ): { refText: string; hostText: string; filterError?: string } => {
+    let refVal = parseResponseData(refRaw)
+    let hostVal = parseResponseData(hostRaw)
+
+    // 1. Sort
+    if (sortMode === 'alpha') {
+      // handled by formatResponseData below
+    } else if (sortMode === 'common-first') {
+      const [sl, sh] = sortJsonKeysCommonFirst(refVal, hostVal)
+      refVal = sl
+      hostVal = sh
+    }
+
+    // 2. JSONPath filter (applied to each side independently)
+    if (jsonPath.trim()) {
+      const refResult = applyJsonPath(refVal, jsonPath)
+      const hostResult = applyJsonPath(hostVal, jsonPath)
+      const error = refResult.error || hostResult.error
+      if (error) return { refText: '', hostText: '', filterError: error }
+      refVal = refResult.result
+      hostVal = hostResult.result
+    }
+
+    // 3. Stringify
+    const stringify = (v: unknown) =>
+      v === undefined || v === null ? '' : JSON.stringify(v, null, 2)
+
+    if (sortMode === 'alpha' && !jsonPath.trim()) {
+      // Use formatResponseData which handles alpha sort including string inputs
+      return {
+        refText: formatResponseData(refRaw, true),
+        hostText: formatResponseData(hostRaw, true)
+      }
+    }
+
+    // For alpha + jsonPath: parse was already done above, just sort the filtered result
+    if (sortMode === 'alpha' && jsonPath.trim()) {
+      return {
+        refText: stringify(sortJsonKeys(refVal)),
+        hostText: stringify(sortJsonKeys(hostVal))
+      }
+    }
+
+    return { refText: stringify(refVal), hostText: stringify(hostVal) }
+  }
 
   const referenceHost = comparison.hostResponses.find(
     h => h.hostId === comparison.referenceHostId
@@ -84,14 +147,78 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     }
   }
 
+  // Compute filter error from the first host pair (all pairs share the same expression)
+  const filterError: string | null = (() => {
+    if (!jsonPath.trim() || otherHosts.length === 0) return null
+    const firstHost = otherHosts[0]
+    const { filterError: fe } = buildDiffTexts(
+      referenceHost.response?.data,
+      firstHost.response?.data
+    )
+    return fe ?? null
+  })()
+
   return (
     <div className="diff-pairs">
+      {/* Sort + JSONPath toolbar */}
+      <div className="diff-toolbar">
+        <span className="diff-toolbar-label">Key order:</span>
+        <div className="diff-sort-toggle">
+          <button
+            className={sortMode === 'original' ? 'active' : ''}
+            onClick={() => setSortMode('original')}
+          >
+            Original
+          </button>
+          <button
+            className={sortMode === 'alpha' ? 'active' : ''}
+            onClick={() => setSortMode('alpha')}
+          >
+            Alphabetical
+          </button>
+          <button
+            className={sortMode === 'common-first' ? 'active' : ''}
+            onClick={() => setSortMode('common-first')}
+          >
+            Common first
+          </button>
+        </div>
+        <span className="diff-toolbar-separator">|</span>
+        <span className="diff-toolbar-label">JSONPath:</span>
+        <div className="diff-jsonpath-wrap">
+          <input
+            type="text"
+            className={`diff-jsonpath-input${filterError ? ' diff-jsonpath-input--error' : ''}`}
+            placeholder="$.items[*].id"
+            value={jsonPath}
+            onChange={e => {
+              setJsonPath(e.target.value)
+              setJsonPathError(null)
+            }}
+            spellCheck={false}
+          />
+          {jsonPath && (
+            <button
+              className="diff-jsonpath-clear"
+              onClick={() => { setJsonPath(''); }}
+              title="Clear filter"
+            >✕</button>
+          )}
+        </div>
+        {filterError && <span className="diff-jsonpath-error">{filterError}</span>}
+      </div>
       {otherHosts.map(host => {
         const isExpanded = expandedHosts[host.hostId] ?? false
         const refHasError = !!referenceHost.error
         const hostHasError = !!host.error
-        const refData = formatResponseData(referenceHost.response?.data)
-        const hostData = formatResponseData(host.response?.data)
+
+        const { refText, hostText } = buildDiffTexts(
+          referenceHost.response?.data,
+          host.response?.data
+        )
+
+        const refData = refText
+        const hostData = hostText
 
         return (
           <div key={host.hostId} className="diff-pair">
