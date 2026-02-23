@@ -16,7 +16,7 @@ export function replaceHostInCurl(
 ): string {
   // {host} in the template is now always protocol-free (e.g. {host}/path),
   // so we always substitute the full normalized URL (e.g. https://api.example.com).
-  return curlCommand.replace(/\{host\}/g, host.normalized)
+  return curlCommand.replaceAll('{host}', host.normalized)
 }
 
 
@@ -53,7 +53,7 @@ export function replaceHostInParsedCurl(
       ...parsedCurl,
       url: finalUrl
     };
-  } catch (e) {
+  } catch {
     // Fallback if URL resolution fails
     return parsedCurl;
   }

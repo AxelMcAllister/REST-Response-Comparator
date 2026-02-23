@@ -3,8 +3,8 @@
  * Handles HTTP request execution with parallel execution support
  */
 
-import axios, { AxiosRequestConfig } from 'axios'
-import type { ParsedCurl } from '@/shared/types'
+import axios, { type AxiosRequestConfig, type Method } from 'axios'
+import type { ParsedCurl, ParallelExecutionMode } from '@/shared/types'
 import type { ParsedHost } from './hostParser'
 import { replaceHostInParsedCurl } from './hostReplacer'
 import { parseCurl } from './curlParser'
@@ -29,7 +29,6 @@ export interface ExecutionResult {
   responseTime?: number
 }
 
-export type ParallelExecutionMode = 'all-at-once' | 'per-curl'
 
 const PROXY_URL = 'http://localhost:3001/proxy';
 
@@ -41,14 +40,14 @@ async function executeRequest(
   host: ParsedHost
 ): Promise<ExecutionResult> {
   const startTime = Date.now()
-  
+
   try {
     // Replace {host} placeholder
     const finalCurl = replaceHostInParsedCurl(parsedCurl, host)
-    
+
     // Build axios config
     const config: AxiosRequestConfig = {
-      method: finalCurl.method as any,
+      method: finalCurl.method as Method,
       url: finalCurl.url,
       headers: finalCurl.headers,
       data: finalCurl.body ? JSON.parse(finalCurl.body) : undefined,
@@ -63,12 +62,12 @@ async function executeRequest(
     } catch (directError) {
       // If direct request fails and we are in dev mode, try proxy
       if (import.meta.env.DEV) {
-        console.warn(`Direct request to ${finalCurl.url} failed, retrying via proxy...`, directError);
-        
+        // Direct request failed — try proxy in dev mode (expected for CORS)
+
         // Construct proxy URL
         const proxyConfig = { ...config };
         proxyConfig.url = `${PROXY_URL}?url=${encodeURIComponent(finalCurl.url)}`;
-        
+
         // Remove host header if present, as it will be set by proxy
         if (proxyConfig.headers) {
           delete proxyConfig.headers['Host'];
@@ -90,14 +89,14 @@ async function executeRequest(
       response: {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers as Record<string, string>,
+        headers: response.headers as unknown as Record<string, string>,
         data: response.data
       },
       responseTime
     }
   } catch (error) {
     const responseTime = Date.now() - startTime
-    
+
     return {
       hostId: host.hostname,
       hostValue: host.normalized,
@@ -116,10 +115,10 @@ export async function executeForAllHosts(
   hosts: ParsedHost[]
 ): Promise<ExecutionResult[]> {
   const parsedCurl = parseCurl(curlCommand)
-  
+
   // Execute all requests in parallel
   const promises = hosts.map(host => executeRequest(parsedCurl, host))
-  
+
   return Promise.all(promises)
 }
 
@@ -139,7 +138,7 @@ export async function executeCurlBatch(
     // Execute all cURLs × all hosts simultaneously
     const allPromises: Array<Promise<ExecutionResult>> = []
     const curlIndices: number[] = []
-    
+
     curlCommands.forEach((curlCommand, index) => {
       const parsedCurl = parseCurl(curlCommand)
       hosts.forEach(host => {
@@ -147,9 +146,9 @@ export async function executeCurlBatch(
         curlIndices.push(index)
       })
     })
-    
+
     const allResults = await Promise.all(allPromises)
-    
+
     // Group results by cURL index
     const grouped: Map<number, ExecutionResult[]> = new Map()
     allResults.forEach((result, i) => {
@@ -157,9 +156,12 @@ export async function executeCurlBatch(
       if (!grouped.has(curlIndex)) {
         grouped.set(curlIndex, [])
       }
-      grouped.get(curlIndex)!.push(result)
+      const group = grouped.get(curlIndex)
+      if (group) {
+        group.push(result)
+      }
     })
-    
+
     return curlCommands.map((curlCommand, index) => ({
       curlIndex: index,
       curlCommand,
@@ -172,7 +174,7 @@ export async function executeCurlBatch(
       curlCommand: string
       results: ExecutionResult[]
     }> = []
-    
+
     for (let i = 0; i < curlCommands.length; i++) {
       const curlCommand = curlCommands[i]
       const curlResults = await executeForAllHosts(curlCommand, hosts)
@@ -182,7 +184,7 @@ export async function executeCurlBatch(
         results: curlResults
       })
     }
-    
+
     return results
   }
 }

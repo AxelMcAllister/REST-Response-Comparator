@@ -76,13 +76,14 @@ export function validateHost(input: string): { valid: boolean; error?: string } 
     const parsed = parseHost(input)
 
     // Basic hostname validation
-    if (!parsed.hostname || parsed.hostname.length === 0) {
+    if (!parsed.hostname) {
       return { valid: false, error: 'Invalid host format' }
     }
 
     // Check for valid hostname characters
     const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-    if (!hostnameRegex.test(parsed.hostname) && !new RegExp(/^(\d{1,3}\.){3}\d{1,3}$/).exec(parsed.hostname)) {
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/
+    if (!hostnameRegex.test(parsed.hostname) && !ipv4Regex.test(parsed.hostname)) {
       return { valid: false, error: 'Invalid hostname format' }
     }
 

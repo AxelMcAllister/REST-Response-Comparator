@@ -6,6 +6,9 @@
 import type { HostResponse, HostDifference, Difference } from '@/shared/types'
 import { JSONPath } from 'jsonpath-plus'
 
+/** Response time difference threshold (in ms) above which a difference is reported. */
+const RESPONSE_TIME_THRESHOLD_MS = 500
+
 /**
  * Apply a JSONPath expression to a parsed JSON value.
  * Returns { result } on success or { error } on invalid expression.
@@ -14,7 +17,7 @@ import { JSONPath } from 'jsonpath-plus'
 export function applyJsonPath(
   data: unknown,
   expression: string
-): { result: unknown; error?: undefined } | { result?: undefined; error: string } {
+): { result: unknown; error?: string } | { result?: unknown; error: string } {
   if (!expression.trim()) return { result: data }
   try {
     const matches = JSONPath({ path: expression, json: data as object, wrap: true })
@@ -102,6 +105,7 @@ export function sortJsonKeysCommonFirst(
 /**
  * Format response data for diffing.
  * Handles JSON formatting with indentation.
+ * @param data
  * @param sortKeys - if true, sorts object keys alphabetically before formatting
  */
 export function formatResponseData(data: unknown, sortKeys = false): string {
@@ -146,7 +150,7 @@ export function computeDifferences(
   // Basic check for response time difference (threshold e.g. > 500ms)
   const refTime = referenceResponse.responseTime || 0
   const hostTime = hostResponse.responseTime || 0
-  if (Math.abs(refTime - hostTime) > 500) {
+  if (Math.abs(refTime - hostTime) > RESPONSE_TIME_THRESHOLD_MS) {
     diffs.push({
       path: 'responseTime',
       referenceValue: refTime,

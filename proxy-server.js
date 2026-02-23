@@ -63,7 +63,7 @@ const server = http.createServer((req, res) => {
   } catch (err) {
     console.error('Invalid URL:', err);
     res.writeHead(400, { 'Content-Type': 'text/plain' });
-    res.end(`Invalid URL: ${err.message}`);
+    res.end(`Invalid URL: ${err instanceof Error ? err.message : String(err)}`);
   }
 });
 

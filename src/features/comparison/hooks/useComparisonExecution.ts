@@ -85,8 +85,8 @@ export const useComparisonExecution = () => {
 
         addComparison(comparison)
       })
-    } catch (error) {
-      console.error('Execution failed', error)
+    } catch {
+      // Error already surfaced - execution state is reset via finally
     } finally {
       setIsExecuting(false)
     }

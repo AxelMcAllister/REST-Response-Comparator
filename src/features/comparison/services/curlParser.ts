@@ -3,7 +3,7 @@
  * Extracts URL, method, headers, and body from cURL commands
  */
 
-import type { ParsedCurl } from '@/shared/types'
+import type {ParsedCurl} from '@/shared/types'
 
 /**
  * Recognized curl flags (long and short forms).
@@ -49,6 +49,7 @@ const FLAGS_WITH_ARGS = new Set([
   '-c', '--cookie-jar',
   '--url',
   '-F', '--form',
+  '--json',
   '-T', '--upload-file',
 ])
 
@@ -92,7 +93,7 @@ export function parseCurl(curlCommand: string): ParsedCurl {
   }
 
   // Extract method (-X flag)
-  const methodMatch = new RegExp(/-X\s+(\w+)/i).exec(command)
+  const methodMatch = /-X\s+(\w+)/i.exec(command)
   if (methodMatch) {
     parsed.method = methodMatch[1].toUpperCase()
     command = command.replace(methodMatch[0], '')
@@ -108,15 +109,14 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     const colonIndex = header.indexOf(':')
     if (colonIndex > 0) {
       const key = header.substring(0, colonIndex).trim()
-      const value = header.substring(colonIndex + 1).trim()
-      parsed.headers[key] = value
+      parsed.headers[key] = header.substring(colonIndex + 1).trim()
     }
     // Remove the header from command string to clean it up for URL extraction
     command = command.replace(match[0], '')
   })
 
   // Extract body (-d or --data flag)
-  const bodyMatch = new RegExp(/(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+(\S+)/).exec(command)
+  const bodyMatch = /(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+(\S+)/.exec(command)
   if (bodyMatch) {
     parsed.body = bodyMatch[1] || bodyMatch[2]
     command = command.replace(bodyMatch[0], '')
@@ -144,12 +144,12 @@ export function parseCurl(curlCommand: string): ParsedCurl {
 
   // 1. Check for quoted URL (single or double quotes)
   // Matches 'url' or "url" and captures the content inside
-  const quotedUrlMatch = new RegExp(/^(['"])(.*?)\1/).exec(cleanCommand)
+  const quotedUrlMatch = /^(['"])(.*?)\1/.exec(cleanCommand)
   if (quotedUrlMatch) {
     parsed.url = quotedUrlMatch[2].trim()
   } else {
     // 2. Fallback to finding http/https or path
-    const urlMatch = new RegExp(/(https?:\/\/\S+|\/\S*)/).exec(cleanCommand)
+    const urlMatch = /(https?:\/\/\S+|\/\S*)/.exec(cleanCommand)
     if (urlMatch) {
       parsed.url = urlMatch[1].trim()
     } else {
@@ -266,7 +266,7 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
       return { valid: false, error: 'cURL command must contain a URL' }
     }
     // Stricter URL check: must be a valid path, a {host} placeholder, or a valid URL format
-    const isValidUrl = /^(\/|https?:\/\/|\{host\}|localhost)/.test(parsed.url);
+    const isValidUrl = /^(\/|https?:\/\/|\{host}|localhost)/.test(parsed.url);
     if (!isValidUrl) {
       return { valid: false, error: `Invalid URL format: '${parsed.url}'` };
     }
@@ -289,9 +289,9 @@ export function formatParsedCurlToCommand(parsed: ParsedCurl): string {
     command += ` -X ${parsed.method.toUpperCase()}`;
   }
 
-  for (const key in parsed.headers) {
+  for (const [key, headerValue] of Object.entries(parsed.headers)) {
     // Escape quotes in header values
-    const value = parsed.headers[key].replace(/'/g, String.raw`'\''`);
+    const value = headerValue.replace(/'/g, String.raw`'\''`);
     command += ` -H '${key}: ${value}'`;
   }
 
