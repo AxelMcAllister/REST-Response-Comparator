@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
+import { useComparisonStore } from '../../store/comparisonStore'
 import type { ComparisonResult } from '@/shared/types'
 import { formatResponseData, sortJsonKeys, sortJsonKeysCommonFirst, applyJsonPath } from '../../services/diffService'
 import { parseJsonPathInput, getJsonPathSuggestions, buildLineToPathMap } from '../../services/jsonPathSuggestions'
@@ -50,6 +51,7 @@ const DIFF_STYLES = {
 }
 
 export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResult }) => {
+  const { hosts } = useComparisonStore()
   const [expandedHosts, setExpandedHosts] = useState<Record<string, boolean>>({})
   const [copyStatus, setCopyStatus] = useState<Record<string, string>>({})
   const [sortMode, setSortMode] = useState<'original' | 'alpha' | 'common-first'>('original')
@@ -266,6 +268,12 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     [lineToPathMap]
   )
 
+  const getHostTag = (hostId: string) => {
+    const index = hosts.findIndex(h => h.id === hostId)
+    if (index === -1) return null
+    return <span className="diff-host-tag">{String.fromCharCode(65 + index)}</span>
+  }
+
   return (
     <div className="diff-pairs">
       {/* Sort + JSONPath toolbar */}
@@ -388,6 +396,7 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
             <div className="diff-pair-header">
               <div className="diff-host-info diff-host-info--ref">
                 <span className="diff-ref-badge">REF</span>
+                {getHostTag(referenceHost.hostId)}
                 <span className="diff-host-name">{referenceHost.hostValue}</span>
                 {referenceHost.responseTime != null && !refHasError && (
                   <span className="diff-timing">{referenceHost.responseTime}ms</span>
@@ -413,6 +422,7 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
               <span className="diff-vs">vs</span>
 
               <div className="diff-host-info">
+                {getHostTag(host.hostId)}
                 <span className="diff-host-name">{host.hostValue}</span>
                 {host.responseTime != null && !hostHasError && (
                   <span className="diff-timing">{host.responseTime}ms</span>
@@ -455,19 +465,21 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
                 <strong>{host.hostValue} failed:</strong> {host.error}
               </div>
             ) : (
-              <div className="diff-viewer-wrap" title="Click a line number (left or right) to filter by that JSON path">
-                <ReactDiffViewer
-                  oldValue={refData}
-                  newValue={hostData}
-                  splitView={true}
-                  useDarkTheme={false}
-                  styles={DIFF_STYLES}
-                  extraLinesSurroundingDiff={isExpanded ? 99999 : 3}
-                  onLineNumberClick={(lineId, e) => {
-                    e.preventDefault()
-                    handleLineNumberClick(lineId, rightLineToPathMap)
-                  }}
-                />
+              <div className="diff-viewer-container">
+                <div className="diff-viewer-wrap" title="Click a line number (left or right) to filter by that JSON path">
+                  <ReactDiffViewer
+                    oldValue={refData}
+                    newValue={hostData}
+                    splitView={true}
+                    useDarkTheme={false}
+                    styles={DIFF_STYLES}
+                    extraLinesSurroundingDiff={isExpanded ? 99999 : 3}
+                    onLineNumberClick={(lineId, e) => {
+                      e.preventDefault()
+                      handleLineNumberClick(lineId, rightLineToPathMap)
+                    }}
+                  />
+                </div>
                 <button
                   type="button"
                   className="diff-copy-json-btn diff-copy-json-btn--overlay diff-copy-json-btn--left"

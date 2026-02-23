@@ -3,6 +3,7 @@ import { useComparisonStore } from '../../store/comparisonStore'
 import type { Host, CurlCommand } from '@/shared/types'
 import { parseHosts } from '../../services/hostParser'
 import { EditableLabel } from '@/shared/components/EditableLabel/EditableLabel'
+import { GlobalOptionsPanel } from '../GlobalOptionsPanel/GlobalOptionsPanel'
 import './ConfigManager.css'
 
 /** Simplified export format: reference host prefixed with *, no ids, no normalizedUrl */
@@ -182,39 +183,40 @@ export const ConfigManager = () => {
     <div className="config-manager">
       <div className="config-main-actions">
         <div className="config-description-wrapper">
-            <EditableLabel
-              initialValue={description}
-              placeholder="Project description (optional)"
-              onSave={setDescription}
-            />
+          <EditableLabel
+            initialValue={description}
+            placeholder="Project description (optional)"
+            onSave={setDescription}
+          />
         </div>
         <div className="config-buttons">
-            <button
-              className="config-btn config-btn-export-new"
-              onClick={handleExport}
-              title="Export current configuration to .rrc.json file"
-              disabled={hosts.length === 0 && curlCommands.length === 0}
-            >
-              <span className="config-btn-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-4.75a.75.75 0 001.5 0V9.56l1.22 1.22a.75.75 0 101.06-1.06l-2.5-2.5a.75.75 0 00-1.06 0l-2.5 2.5a.75.75 0 001.06 1.06l1.22-1.22v3.69z" clipRule="evenodd" />
-                </svg>
-              </span>
-              Export Config
-            </button>
+          <GlobalOptionsPanel />
+          <button
+            className="config-btn config-btn-export-new"
+            onClick={handleExport}
+            title="Export current configuration to .rrc.json file"
+            disabled={hosts.length === 0 && curlCommands.length === 0}
+          >
+            <span className="config-btn-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-4.75a.75.75 0 001.5 0V9.56l1.22 1.22a.75.75 0 101.06-1.06l-2.5-2.5a.75.75 0 00-1.06 0l-2.5 2.5a.75.75 0 001.06 1.06l1.22-1.22v3.69z" clipRule="evenodd" />
+              </svg>
+            </span>
+            Export Config
+          </button>
 
-            <button
-              className="config-btn config-btn-import-new"
-              onClick={handleImportClick}
-              title="Import configuration from .rrc.json file"
-            >
-              <span className="config-btn-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 4.75a.75.75 0 00-1.5 0v4.69L8.03 9.72a.75.75 0 00-1.06 1.06l2.5 2.5a.75.75 0 001.06 0l2.5-2.5a.75.75 0 00-1.06-1.06L10.75 11.44V6.75z" clipRule="evenodd" />
-                </svg>
-              </span>
-              Import Config
-            </button>
+          <button
+            className="config-btn config-btn-import-new"
+            onClick={handleImportClick}
+            title="Import configuration from .rrc.json file"
+          >
+            <span className="config-btn-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 4.75a.75.75 0 00-1.5 0v4.69L8.03 9.72a.75.75 0 00-1.06 1.06l2.5 2.5a.75.75 0 001.06 0l2.5-2.5a.75.75 0 00-1.06-1.06L10.75 11.44V6.75z" clipRule="evenodd" />
+              </svg>
+            </span>
+            Import Config
+          </button>
         </div>
         <input
           type="file"

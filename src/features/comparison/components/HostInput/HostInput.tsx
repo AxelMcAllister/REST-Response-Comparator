@@ -152,10 +152,11 @@ export default function HostInput({ hosts, onHostsChange }: HostInputProps) {
       {duplicateNotice && <div className="duplicate-notice">{duplicateNotice}</div>}
 
       <div className="host-input-list">
-        {hosts.map((host) => (
+        {hosts.map((host, index) => (
           <HostInputField
             key={host.id}
             host={host}
+            index={index}
             onRemove={() => handleRemoveHost(host.id)}
             onToggleReference={() => handleToggleReference(host.id)}
             onUpdate={(value) => handleUpdateHost(host.id, value)}

@@ -159,29 +159,38 @@ export function hasHostPlaceholder(curlCommand: string): boolean {
  * Attempts to find hostname in URL and replace with {host}
  */
 export function autoDetectHostPlaceholder(curlCommand: string): string {
-  // Replace the full "protocol://hostname" with {host} so the placeholder is
-  // protocol-agnostic. The host value (which already includes its own protocol)
-  // will be substituted directly at {host}, avoiding any protocol duplication.
-  const urlPattern = /(https?:\/\/)([^/\s'"]+)(\/[^\s'"]*)?/
-  const match = urlPattern.exec(curlCommand)
+  const original = curlCommand
 
-  if (match) {
-    const protocol = match[1]
-    const hostname = match[2]
-    const path = match[3] || ''
-
-    const fullOrigin = `${protocol}${hostname}`
-    return curlCommand.replace(fullOrigin + path, `{host}${path}`)
+  // Pattern for full URLs (e.g., https://example.com/path)
+  const urlPattern = /(https?:\/\/)([^/\s'"]+)/
+  const urlMatch = urlPattern.exec(original)
+  if (urlMatch) {
+    return original.replace(urlMatch[0], '{host}')
   }
 
-  // Fallback: replace a bare hostname-like token
-  const hostnamePattern = /([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+)/
-  const hostnameMatch = hostnamePattern.exec(curlCommand)
+  // Pattern for bare hostnames (e.g., api.example.com)
+  const hostnamePattern = /([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}/
+  const hostnameMatch = hostnamePattern.exec(original)
   if (hostnameMatch) {
-    return curlCommand.replace(hostnameMatch[1], '{host}')
+    // Ensure it's not part of a path
+    const charBefore = original.charAt(hostnameMatch.index - 1)
+    if (charBefore === '' || charBefore === ' ' || charBefore === "'" || charBefore === '"' || charBefore === '/') {
+      return original.replace(hostnameMatch[0], '{host}')
+    }
   }
 
-  return curlCommand
+  // If no hostname found, assume a path-only URL and prepend {host}
+  // This is a fallback and might not cover all edge cases.
+  // It looks for the first path-like argument.
+  const tokens = original.split(/\s+/)
+  const urlTokenIndex = tokens.findIndex(t => t.startsWith('/') || t.startsWith('\'/') || t.startsWith('"/'))
+  if (urlTokenIndex > -1) {
+    const token = tokens[urlTokenIndex]
+    tokens[urlTokenIndex] = token.startsWith('/') ? `{host}${token}` : token.charAt(0) + `{host}` + token.slice(1)
+    return tokens.join(' ')
+  }
+
+  return original
 }
 
 

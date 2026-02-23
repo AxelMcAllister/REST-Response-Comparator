@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import type { CurlCommand } from '@/shared/types'
 import { validateCurl, hasHostPlaceholder, autoDetectHostPlaceholder, normalizeCurlCommand } from '../../services/curlParser'
 import LineNumberedTextarea from './LineNumberedTextarea'
+import { CurlCommandRow } from './CurlCommandRow'
 import './CurlInput.css'
 
 interface ParsedCommand {
@@ -10,12 +11,12 @@ interface ParsedCommand {
   startLine: number
 }
 
-/**
- * Split raw text (textarea or file) into individual curl command objects.
- * Handles multiline continuations (lines ending with \) by grouping them
- * together into one logical command per curl invocation.
- * Each result carries the 1-based line number where the command started.
- */
+interface CommandWarning {
+  id?: string; // ID of the command being updated, if applicable
+  original: string;
+  detected: string;
+}
+
 function splitCurlCommands(text: string): ParsedCommand[] {
   const lines = text.split('\n')
   const commands: ParsedCommand[] = []
@@ -24,16 +25,15 @@ function splitCurlCommands(text: string): ParsedCommand[] {
 
   lines.forEach((line, idx) => {
     const trimmedLine = line.trimEnd()
-    if (!trimmedLine && !current) return // skip blank lines between commands
+    if (!trimmedLine && !current) return
 
     if (current) {
       current += '\n' + trimmedLine
     } else {
       current = trimmedLine
-      currentStartLine = idx + 1 // 1-based
+      currentStartLine = idx + 1
     }
 
-    // If the line does NOT end with \, the command is complete
     if (!trimmedLine.endsWith('\\')) {
       const normalized = normalizeCurlCommand(current)
       if (normalized) commands.push({ command: normalized, startLine: currentStartLine })
@@ -41,7 +41,6 @@ function splitCurlCommands(text: string): ParsedCommand[] {
     }
   })
 
-  // Flush any remaining accumulated lines
   if (current) {
     const normalized = normalizeCurlCommand(current)
     if (normalized) commands.push({ command: normalized, startLine: currentStartLine })
@@ -56,16 +55,12 @@ interface CurlInputProps {
 }
 
 export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlInputProps) {
-  const [mode, setMode] = useState<'textarea' | 'file'>('textarea')
   const [textareaValue, setTextareaValue] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null)
-  const [warning, setWarning] = useState<Array<{ original: string; detected: string }>>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [warning, setWarning] = useState<CommandWarning[]>([])
   const isAddingLocally = useRef(false)
 
-  // Clear errors when curlCommands changes externally (e.g. import),
-  // but preserve them if the change was triggered by our own addCommands.
   useEffect(() => {
     if (isAddingLocally.current) {
       isAddingLocally.current = false
@@ -74,15 +69,13 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
     setErrors([])
   }, [curlCommands])
 
-  const addCommands = useCallback((parsedCommands: ParsedCommand[], fileName?: string) => {
+  const addCommands = useCallback((parsedCommands: ParsedCommand[]) => {
     const newCommands: CurlCommand[] = []
     const validationErrors: string[] = []
-    const missingHostQueue: Array<{ original: string; detected: string }> = []
+    const missingHostQueue: CommandWarning[] = []
     const duplicateSkipped: string[] = []
 
-    // Build a location label for error messages
-    const location = (startLine: number) =>
-      fileName ? `${fileName}:${startLine}` : `Input line ${startLine}`
+    const location = (startLine: number) => `Input line ${startLine}`
 
     parsedCommands.forEach(({ command, startLine }, index) => {
       const trimmed = command.trim()
@@ -91,18 +84,15 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
       const validation = validateCurl(trimmed)
       if (!validation.valid) {
         validationErrors.push(`${location(startLine)}: ${validation.error}`)
-        return // skip this command but continue processing the rest
+        return
       }
 
       if (!hasHostPlaceholder(trimmed)) {
-        // Always queue for the suggestion modal — same UX for single and bulk
         const detected = autoDetectHostPlaceholder(trimmed)
-        // Collect into a local array; we'll enqueue after the loop
         missingHostQueue.push({ original: trimmed, detected })
         return
       }
 
-      // Deduplicate against already-accepted commands (compare normalized strings)
       const existingCurls = new Set(curlCommands.map(c => c.value))
       if (existingCurls.has(trimmed)) {
         duplicateSkipped.push(trimmed)
@@ -115,46 +105,49 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
       })
     })
 
-    // Enqueue commands missing {host} — modal will show them one by one
     if (missingHostQueue.length > 0) {
       setWarning(prev => [...prev, ...missingHostQueue])
     }
 
-    // Always add the valid commands first
     if (newCommands.length > 0) {
       isAddingLocally.current = true
       onCurlCommandsChange([...curlCommands, ...newCommands])
       setTextareaValue('')
     }
 
-    // Show duplicate notice
     if (duplicateSkipped.length > 0) {
       setDuplicateNotice(`${duplicateSkipped.length} duplicate ${duplicateSkipped.length === 1 ? 'command' : 'commands'} skipped (already in list)`)
     } else {
       setDuplicateNotice(null)
     }
 
-    // Then surface validation errors (non-blocking)
-    // We overwrite previous errors to ensure only the latest batch's errors are shown
     setErrors(validationErrors)
   }, [curlCommands, onCurlCommandsChange])
 
   const handleAddFromTextarea = () => {
     const commands = splitCurlCommands(textareaValue)
-    addCommands(commands) // no fileName → errors say "Command N"
+    addCommands(commands)
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const content = e.target?.result as string
-      const commands = splitCurlCommands(content)
-      addCommands(commands, file.name) // pass filename → errors say "filename:lineN"
+  const handleUpdateCommand = (id: string, value: string) => {
+    // 1. Validate syntax
+    const validation = validateCurl(value)
+    if (!validation.valid) {
+      setErrors([`Update failed: ${validation.error}`])
+      return
     }
-    reader.readAsText(file)
+
+    // 2. Check for {host} placeholder
+    if (!hasHostPlaceholder(value)) {
+      const detected = autoDetectHostPlaceholder(value);
+      setWarning(prev => [...prev, { id, original: value, detected }]);
+      return;
+    }
+
+    // 3. Update if valid
+    const updatedCommands = curlCommands.map(cmd => cmd.id === id ? { ...cmd, value } : cmd)
+    onCurlCommandsChange(updatedCommands)
+    setErrors([]) // Clear errors on successful update
   }
 
   const handleRemoveCommand = (id: string) => {
@@ -172,10 +165,18 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
       if (alreadyExists) {
         setDuplicateNotice('Duplicate command skipped (already in list)')
       } else {
-        onCurlCommandsChange([...curlCommands, {
-          id: `curl-${Date.now()}`,
-          value: current.detected
-        }])
+        if (current.id) {
+          // This was an update
+          const updatedCommands = curlCommands.map(cmd => cmd.id === current.id ? { ...cmd, value: current.detected } : cmd)
+          onCurlCommandsChange(updatedCommands)
+          setErrors([])
+        } else {
+          // This was a new command
+          onCurlCommandsChange([...curlCommands, {
+            id: `curl-${Date.now()}`,
+            value: current.detected
+          }])
+        }
         setDuplicateNotice(null)
       }
     }
@@ -190,54 +191,21 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
     <div className="curl-input">
       <div className="curl-input-header">
         <label>cURL Commands</label>
-        <div className="curl-mode-toggle">
-          <button
-            className={mode === 'textarea' ? 'active' : ''}
-            onClick={() => setMode('textarea')}
-          >
-            Text
-          </button>
-          <button
-            className={mode === 'file' ? 'active' : ''}
-            onClick={() => setMode('file')}
-          >
-            File
-          </button>
-        </div>
       </div>
 
-      {mode === 'textarea' ? (
-        <div className="curl-textarea-section">
-          <LineNumberedTextarea
-            placeholder="Paste cURL commands here, one per line. Use {host} as a placeholder for hosts."
-            value={textareaValue}
-            onChange={setTextareaValue}
-          />
-          <button
-            className="curl-add-button"
-            onClick={handleAddFromTextarea}
-          >
-            Add cURL Commands
-          </button>
-        </div>
-      ) : (
-        <div className="curl-file-section">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept=".txt,.sh"
-            style={{ display: 'none' }}
-          />
-          <button
-            className="curl-file-button"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Select File
-          </button>
-          <p>Upload a text file with one cURL command per line.</p>
-        </div>
-      )}
+      <div className="curl-textarea-section">
+        <LineNumberedTextarea
+          placeholder="Paste cURL commands here, one per line. Use {host} as a placeholder for hosts."
+          value={textareaValue}
+          onChange={setTextareaValue}
+        />
+        <button
+          className="curl-add-button"
+          onClick={handleAddFromTextarea}
+        >
+          Add cURL Commands
+        </button>
+      </div>
 
       {errors.length > 0 && (
         <div className="curl-error-container">
@@ -271,16 +239,13 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
           </div>
           <ul>
             {curlCommands.map((cmd, index) => (
-              <li key={cmd.id}>
-                <span className="curl-line-number">{index + 1}</span>
-                <code className="curl-command-value">{cmd.value}</code>
-                <button
-                  className="curl-remove-button"
-                  onClick={() => handleRemoveCommand(cmd.id)}
-                >
-                  ×
-                </button>
-              </li>
+              <CurlCommandRow
+                key={cmd.id}
+                command={cmd}
+                index={index}
+                onUpdate={handleUpdateCommand}
+                onRemove={handleRemoveCommand}
+              />
             ))}
           </ul>
         </div>

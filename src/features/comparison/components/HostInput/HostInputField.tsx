@@ -1,95 +1,40 @@
-import { useState } from 'react'
+import { EditableLabel } from '@/shared/components/EditableLabel/EditableLabel'
 import './HostInput.css'
 
-export interface HostInputFieldProps {
+interface HostInputFieldProps {
   host: { id: string; value: string; isReference: boolean }
+  index: number
   onRemove: () => void
   onToggleReference: () => void
   onUpdate: (value: string) => void
 }
 
-export default function HostInputField({
-  host,
-  onRemove,
-  onToggleReference,
-  onUpdate
-}: HostInputFieldProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(host.value)
-
-  const handleSave = () => {
-    if (editValue.trim() !== host.value) {
-      onUpdate(editValue.trim())
-    }
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    setEditValue(host.value)
-    setIsEditing(false)
-  }
+export default function HostInputField({ host, index, onRemove, onToggleReference, onUpdate }: HostInputFieldProps) {
+  const tag = String.fromCharCode(65 + index)
 
   return (
-    <div className={`host-field ${host.isReference ? 'host-field-reference' : ''}`}>
+    <div className={`host-input-field-item ${host.isReference ? 'is-reference' : ''}`}>
+      <span className="host-tag">{tag}</span>
+      <div className="host-input-editable-wrapper">
+        <EditableLabel
+          initialValue={host.value}
+          placeholder="Enter host URL"
+          onSave={onUpdate}
+        />
+      </div>
       <button
         type="button"
-        className="host-field-reference-button"
+        className={`host-ref-badge ${host.isReference ? 'active' : ''}`}
         onClick={onToggleReference}
-        title={host.isReference ? 'Reference host (click to change)' : 'Click to set as reference'}
-        aria-label={host.isReference ? 'Reference host' : 'Set as reference'}
+        title={host.isReference ? 'This is the reference host' : 'Set as reference host'}
       >
-        {host.isReference ? '⭐' : '☆'}
+        REF
       </button>
-
-      {isEditing ? (
-        <div className="host-field-edit">
-          <input
-            type="text"
-            className="host-field-input"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSave()
-              if (e.key === 'Escape') handleCancel()
-            }}
-            autoFocus
-          />
-          <button
-            type="button"
-            className="host-field-save"
-            onClick={handleSave}
-          >
-            ✓
-          </button>
-          <button
-            type="button"
-            className="host-field-cancel"
-            onClick={handleCancel}
-          >
-            ✕
-          </button>
-        </div>
-      ) : (
-        <div className="host-field-display">
-          <span
-            className="host-field-value"
-            onClick={() => setIsEditing(true)}
-            title="Click to edit"
-          >
-            {host.value}
-          </span>
-          {host.isReference && (
-            <span className="host-field-reference-label">Reference</span>
-          )}
-        </div>
-      )}
-
       <button
         type="button"
-        className="host-field-remove"
+        className="host-input-field-item-remove-button"
         onClick={onRemove}
         title="Remove host"
-        aria-label="Remove host"
       >
         ×
       </button>

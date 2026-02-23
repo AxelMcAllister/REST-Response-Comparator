@@ -41,6 +41,18 @@ export const EditableLabel = ({ initialValue, placeholder, onSave }: EditableLab
     }
   };
 
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    // If we're clicking the save or cancel buttons, don't trigger the blur cancel
+    if (
+      event.relatedTarget &&
+      (event.relatedTarget.closest('.editable-label-save-button') ||
+        event.relatedTarget.closest('.editable-label-cancel-button'))
+    ) {
+      return;
+    }
+    handleCancel();
+  };
+
   if (isEditing) {
     return (
       <div className="editable-label-editing">
@@ -50,6 +62,7 @@ export const EditableLabel = ({ initialValue, placeholder, onSave }: EditableLab
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className="editable-label-input"
         />

@@ -1,17 +1,23 @@
 .host-input {
-  margin-bottom: 2rem;
+  margin-top: 1.5rem;
 }
 
 .host-input-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .host-input-header label {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.125rem;
+}
+
+.host-input-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .host-input-hint {
@@ -19,45 +25,17 @@
   color: #666;
 }
 
-.host-input-header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.list-clear-button {
-  background: none;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.78rem;
-  color: #888;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.list-clear-button:hover {
-  border-color: #d32f2f;
-  color: #d32f2f;
-}
-
 .host-input-add {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .host-input-field {
-  flex: 1;
+  flex-grow: 1;
   padding: 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.host-input-field:focus {
-  outline: none;
-  border-color: #646cff;
 }
 
 .host-input-add-button {
@@ -67,30 +45,12 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-weight: 500;
-}
-
-.host-input-add-button:hover {
-  background-color: #535bf2;
 }
 
 .host-input-error {
   color: #d32f2f;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  padding: 0.5rem;
-  background-color: #ffebee;
-  border-radius: 4px;
-}
-
-.duplicate-notice {
-  margin-bottom: 0.4rem;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  color: #7c5700;
-  background-color: #fff8e1;
-  border-left: 3px solid #f9a825;
-  border-radius: 3px;
 }
 
 .host-input-list {
@@ -99,137 +59,78 @@
   gap: 0.5rem;
 }
 
-.host-field {
+.host-input-field-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  gap: 0.75rem;
+  padding: 0.5rem;
   background-color: #f9f9f9;
-  /* Prevent the container from growing uncontrollably */
-  overflow: hidden;
+  border-radius: 4px;
 }
 
-.host-field-reference {
-  border-color: #646cff;
-  background-color: #f0f0ff;
-}
-
-.host-field-reference-button {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  display: flex;
+.host-tag {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 4px;
+  background-color: #e0e7ff;
+  /* indigo-100 */
+  color: #3730a3;
+  /* indigo-800 */
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
-.host-field-reference-button:hover {
-  transform: scale(1.1);
-}
-
-.host-field-display {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  /* Prevent the container from growing uncontrollably */
+.host-input-editable-wrapper {
+  flex-grow: 1;
   min-width: 0;
 }
 
-.host-field-value {
-  flex: 1;
-  font-family: monospace;
-  font-size: 0.875rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 2px;
-  /* Truncate long text */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.host-field-value:hover {
-  background-color: #e0e0e0;
-}
-
-.host-field-reference-label {
-  font-size: 0.75rem;
-  color: #646cff;
-  font-weight: 600;
-  padding: 0.125rem 0.5rem;
-  background-color: #e3f2fd;
-  border-radius: 12px;
-}
-
-.host-field-edit {
-  flex: 1;
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-  min-width: 0;
-}
-
-.host-field-input {
-  flex: 1;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #646cff;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.875rem;
-}
-
-.host-field-save,
-.host-field-cancel {
-  background: none;
+.host-input-field-item-remove-button {
+  background: transparent;
   border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.host-field-save:hover {
-  background-color: #4caf50;
-  color: white;
-}
-
-.host-field-cancel:hover {
-  background-color: #f44336;
-  color: white;
-}
-
-.host-field-remove {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
   color: #999;
+  font-size: 1.2rem;
   cursor: pointer;
-  padding: 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
+  padding: 0 0.5rem;
 }
 
-.host-field-remove:hover {
-  background-color: #ffebee;
-  color: #d32f2f;
+.host-input-field-item-remove-button:hover {
+  color: #333;
+}
+
+.host-ref-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background-color: transparent;
+  color: #94a3b8;
+  border: 1px dashed #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.host-ref-badge:hover {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-style: solid;
+}
+
+.host-ref-badge.active {
+  background-color: #fefce8;
+  color: #a16207;
+  border: 1px solid #fde047;
 }
 
 .host-input-empty {
-  padding: 1rem;
+  font-size: 0.875rem;
+  color: #666;
   text-align: center;
-  color: #999;
-  font-style: italic;
-  border: 2px dashed #ddd;
+  padding: 1rem;
+  border: 2px dashed #e0e0e0;
   border-radius: 4px;
 }

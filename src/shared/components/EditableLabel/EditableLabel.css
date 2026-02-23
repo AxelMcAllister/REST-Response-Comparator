@@ -4,10 +4,14 @@
   align-items: center;
   gap: 0.5rem;
   border: 1px solid transparent;
-  padding: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  /* slightly less top/bottom padding to account for border */
   border-radius: 4px;
   width: 100%;
   text-align: left;
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  /* Provide a fixed min-height to ensure stability */
 }
 
 .editable-label-display {
@@ -69,6 +73,7 @@
 .editable-label-save-button {
   color: #059669;
 }
+
 .editable-label-save-button:hover {
   color: #047857;
 }
@@ -76,6 +81,7 @@
 .editable-label-cancel-button {
   color: #dc2626;
 }
+
 .editable-label-cancel-button:hover {
   color: #b91c1c;
 }

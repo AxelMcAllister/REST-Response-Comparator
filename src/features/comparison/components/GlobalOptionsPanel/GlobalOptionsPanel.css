@@ -1,0 +1,157 @@
+.global-options-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.global-options-modal {
+    background: var(--bg-surface, #ffffff);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 480px;
+    max-width: 90vw;
+    padding: 1.5rem;
+    color: var(--text-color, #333333);
+    text-align: left;
+}
+
+.global-options-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.global-options-header h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    color: var(--text-color, #213547);
+}
+
+.global-options-desc {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #666666);
+}
+
+.global-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+    margin-bottom: 1.5rem;
+}
+
+.global-option-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    cursor: pointer;
+}
+
+.global-option-item input[type="checkbox"] {
+    margin-top: 0.25rem;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-color, #2196F3);
+}
+
+.global-option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.global-option-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-color, #333333);
+}
+
+.global-option-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted, #666666);
+    line-height: 1.3;
+}
+
+.global-option-input-group {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.global-option-input-group input[type="text"] {
+    width: 100%;
+    padding: 0.625rem;
+    background-color: var(--bg-body, #f9fafb);
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 4px;
+    color: var(--text-color, #333333);
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+.global-option-input-group input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color, #2196F3);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.global-options-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.global-options-btn-cancel,
+.global-options-btn-ok {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.global-options-btn-cancel {
+    background-color: transparent;
+    border: 1px solid var(--border-color, #d1d5db);
+    color: var(--text-color, #374151);
+}
+
+.global-options-btn-cancel:hover {
+    background-color: var(--bg-hover, #f3f4f6);
+}
+
+.global-options-btn-ok {
+    background-color: var(--primary-color, #2196F3);
+    border: 1px solid var(--primary-color, #2196F3);
+    color: white;
+}
+
+.global-options-btn-ok:hover {
+    background-color: #1976D2;
+    border-color: #1976D2;
+}
+
+/* Base style for config buttons (from ConfigManager that we extend here) */
+.config-btn-settings {
+    color: #4b5563;
+    /* Gray */
+}
+
+.config-btn-settings:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+}
