@@ -6,7 +6,8 @@
   display: flex;
   flex-wrap: wrap;
   border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 2px; /* to avoid cutting off focus ring */
+  padding-bottom: 2px;
+  /* to avoid cutting off focus ring */
 }
 
 .ctabs-tab {
@@ -102,6 +103,9 @@
 
 .ctab-info {
   margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .ctab-heading {
@@ -122,12 +126,29 @@
   text-transform: uppercase;
 }
 
-.method-get { background-color: #2563eb; }
-.method-post { background-color: #16a34a; }
-.method-put { background-color: #c026d3; }
-.method-delete { background-color: #dc2626; }
-.method-patch { background-color: #ea580c; }
-.method-other { background-color: #475569; }
+.method-get {
+  background-color: #2563eb;
+}
+
+.method-post {
+  background-color: #16a34a;
+}
+
+.method-put {
+  background-color: #c026d3;
+}
+
+.method-delete {
+  background-color: #dc2626;
+}
+
+.method-patch {
+  background-color: #ea580c;
+}
+
+.method-other {
+  background-color: #475569;
+}
 
 .ctab-url {
   font-family: monospace;
@@ -140,4 +161,29 @@
   margin: 0.5rem 0 0;
   font-size: 0.85rem;
   color: #64748b;
+}
+
+.ctab-rerun-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ctab-rerun-btn:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.ctab-rerun-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

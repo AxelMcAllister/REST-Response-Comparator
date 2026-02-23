@@ -9,9 +9,11 @@ export const useComparisonExecution = () => {
   const {
     hosts,
     curlCommands,
+    comparisons,
     parallelMode,
     setIsExecuting,
     addComparison,
+    updateComparison,
     clearComparisons
   } = useComparisonStore()
 
@@ -92,5 +94,59 @@ export const useComparisonExecution = () => {
     }
   }
 
-  return { execute }
+  const executeSingle = async (comparisonId: string) => {
+    const comparison = comparisons.find(c => c.id === comparisonId)
+    if (!comparison || hosts.length === 0) return
+
+    updateComparison(comparisonId, { status: 'loading' })
+
+    const curlValue = comparison.curlCommand
+    const parsedHosts = parseHosts(hosts.map(h => h.value))
+
+    try {
+      const results = await executeCurlBatch([curlValue], parsedHosts, 'all-at-once')
+      const executionResult = results[0]
+      if (!executionResult) throw new Error('No result returned')
+
+      const referenceHost = hosts.find(h => h.isReference) || hosts[0]
+
+      const hostResponses: HostResponse[] = executionResult.results.map((r, index) => {
+        const storeHost = hosts[index]
+
+        return {
+          hostId: storeHost?.id ?? r.hostId,
+          hostValue: r.hostValue,
+          response: r.response ? {
+            data: r.response.data,
+            status: r.response.status,
+            statusText: r.response.statusText,
+            headers: r.response.headers,
+            responseTime: r.responseTime
+          } : null,
+          error: r.error || null,
+          isLoading: false,
+          responseTime: r.responseTime
+        }
+      })
+
+      const referenceResponse = hostResponses.find(hr => hr.hostId === referenceHost.id)
+
+      const differences: HostDifference[] = hostResponses.map(hr => {
+        if (!referenceResponse) return { hostId: hr.hostId, differences: [] }
+        return computeDifferences(referenceResponse, hr)
+      })
+
+      updateComparison(comparisonId, {
+        timestamp: Date.now(),
+        referenceHostId: referenceHost.id,
+        hostResponses,
+        differences,
+        status: 'completed'
+      })
+    } catch {
+      updateComparison(comparisonId, { status: 'error' })
+    }
+  }
+
+  return { execute, executeSingle }
 }
