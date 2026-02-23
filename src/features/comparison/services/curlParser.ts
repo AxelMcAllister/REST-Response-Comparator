@@ -36,20 +36,20 @@ const KNOWN_CURL_FLAGS = new Set([
 ])
 
 const FLAGS_WITH_ARGS = new Set([
-    '-X', '--request',
-    '-H', '--header',
-    '-d', '--data', '--data-raw', '--data-binary', '--data-urlencode',
-    '-u', '--user',
-    '-A', '--user-agent',
-    '-e', '--referer',
-    '-m', '--max-time',
-    '--connect-timeout',
-    '-o', '--output',
-    '-b', '--cookie',
-    '-c', '--cookie-jar',
-    '--url',
-    '-F', '--form',
-    '-T', '--upload-file',
+  '-X', '--request',
+  '-H', '--header',
+  '-d', '--data', '--data-raw', '--data-binary', '--data-urlencode',
+  '-u', '--user',
+  '-A', '--user-agent',
+  '-e', '--referer',
+  '-m', '--max-time',
+  '--connect-timeout',
+  '-o', '--output',
+  '-b', '--cookie',
+  '-c', '--cookie-jar',
+  '--url',
+  '-F', '--form',
+  '-T', '--upload-file',
 ])
 
 /**
@@ -121,6 +121,23 @@ export function parseCurl(curlCommand: string): ParsedCurl {
     parsed.body = bodyMatch[1] || bodyMatch[2]
     command = command.replace(bodyMatch[0], '')
   }
+
+  // Strip standalone flags (flags without arguments) so they don't interfere with URL extraction.
+  // These are known flags that do NOT consume a following token.
+  const STANDALONE_FLAGS = new Set([
+    '-L', '--location',
+    '-k', '--insecure',
+    '-s', '--silent',
+    '-v', '--verbose',
+    '--compressed',
+    '--http1.0', '--http1.1', '--http2',
+    '-G', '--get',
+    '-I', '--head',
+  ])
+  command = command
+    .split(/\s+/)
+    .filter(token => !STANDALONE_FLAGS.has(token))
+    .join(' ')
 
   // Extract URL
   const cleanCommand = command.trim()
@@ -216,7 +233,7 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
 
   // Check for incomplete 'curl' command
   if (/^curl\s*$/i.test(normalized)) {
-      return { valid: false, error: 'cURL command is incomplete' }
+    return { valid: false, error: 'cURL command is incomplete' }
   }
 
   // 2. Check for unknown flags and flags with missing arguments
@@ -234,10 +251,10 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
         return { valid: false, error: `Unrecognized curl option: '${token}'` }
       }
       if (FLAGS_WITH_ARGS.has(token)) {
-          const nextToken = tokens[i + 1];
-          if (!nextToken || nextToken.startsWith('-')) {
-              return { valid: false, error: `Flag '${token}' is missing an argument` };
-          }
+        const nextToken = tokens[i + 1];
+        if (!nextToken || nextToken.startsWith('-')) {
+          return { valid: false, error: `Flag '${token}' is missing an argument` };
+        }
       }
     }
   }
@@ -251,7 +268,7 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
     // Stricter URL check: must be a valid path, a {host} placeholder, or a valid URL format
     const isValidUrl = /^(\/|https?:\/\/|\{host\}|localhost)/.test(parsed.url);
     if (!isValidUrl) {
-        return { valid: false, error: `Invalid URL format: '${parsed.url}'` };
+      return { valid: false, error: `Invalid URL format: '${parsed.url}'` };
     }
   } catch (error) {
     return { valid: false, error: `Invalid cURL format: ${error instanceof Error ? error.message : 'Unknown error'}` }
