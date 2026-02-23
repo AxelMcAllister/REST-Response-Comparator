@@ -35,6 +35,23 @@ const KNOWN_CURL_FLAGS = new Set([
   '-T', '--upload-file',
 ])
 
+const FLAGS_WITH_ARGS = new Set([
+    '-X', '--request',
+    '-H', '--header',
+    '-d', '--data', '--data-raw', '--data-binary', '--data-urlencode',
+    '-u', '--user',
+    '-A', '--user-agent',
+    '-e', '--referer',
+    '-m', '--max-time',
+    '--connect-timeout',
+    '-o', '--output',
+    '-b', '--cookie',
+    '-c', '--cookie-jar',
+    '--url',
+    '-F', '--form',
+    '-T', '--upload-file',
+])
+
 /**
  * Normalize a (possibly multiline) curl command into a single line.
  * Lines ending with " \\" (backslash continuation) are joined.
@@ -188,7 +205,12 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
     return { valid: false, error: "cURL command must start with 'curl'" }
   }
 
-  // 2. Check for unknown flags
+  // Check for incomplete 'curl' command
+  if (/^curl\s*$/i.test(normalized)) {
+      return { valid: false, error: 'cURL command is incomplete' }
+  }
+
+  // 2. Check for unknown flags and flags with missing arguments
   //    Strip curl keyword, all quoted strings (flag values/URLs), and bare URLs
   //    so only flag tokens remain for inspection.
   let stripped = normalized.replace(/^curl\s*/i, '')
@@ -196,19 +218,31 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
   stripped = stripped.replace(/https?:\/\/\S+/g, '')
 
   const tokens = stripped.trim().split(/\s+/).filter(Boolean)
-  for (const token of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
     if (token.startsWith('-')) {
       if (!KNOWN_CURL_FLAGS.has(token)) {
         return { valid: false, error: `Unrecognized curl option: '${token}'` }
       }
+      if (FLAGS_WITH_ARGS.has(token)) {
+          const nextToken = tokens[i + 1];
+          if (!nextToken || nextToken.startsWith('-')) {
+              return { valid: false, error: `Flag '${token}' is missing an argument` };
+          }
+      }
     }
   }
 
-  // 3. Must contain a parseable URL
+  // 3. Must contain a parseable and valid-looking URL
   try {
     const parsed = parseCurl(normalized)
     if (!parsed.url) {
       return { valid: false, error: 'cURL command must contain a URL' }
+    }
+    // Stricter URL check: must be a valid path, a {host} placeholder, or a valid URL format
+    const isValidUrl = /^(\/|https?:\/\/|\{host\}|localhost)/.test(parsed.url);
+    if (!isValidUrl) {
+        return { valid: false, error: `Invalid URL format: '${parsed.url}'` };
     }
   } catch (error) {
     return { valid: false, error: `Invalid cURL format: ${error instanceof Error ? error.message : 'Unknown error'}` }

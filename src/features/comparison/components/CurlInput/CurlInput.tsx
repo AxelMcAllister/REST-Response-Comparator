@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { CurlCommand } from '@/shared/types'
 import { validateCurl, hasHostPlaceholder, autoDetectHostPlaceholder, normalizeCurlCommand } from '../../services/curlParser'
 import LineNumberedTextarea from './LineNumberedTextarea'
@@ -58,10 +58,21 @@ interface CurlInputProps {
 export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlInputProps) {
   const [mode, setMode] = useState<'textarea' | 'file'>('textarea')
   const [textareaValue, setTextareaValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<string[]>([])
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null)
   const [warning, setWarning] = useState<Array<{ original: string; detected: string }>>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isAddingLocally = useRef(false)
+
+  // Clear errors when curlCommands changes externally (e.g. import),
+  // but preserve them if the change was triggered by our own addCommands.
+  useEffect(() => {
+    if (isAddingLocally.current) {
+      isAddingLocally.current = false
+      return
+    }
+    setErrors([])
+  }, [curlCommands])
 
   const addCommands = useCallback((parsedCommands: ParsedCommand[], fileName?: string) => {
     const newCommands: CurlCommand[] = []
@@ -111,6 +122,7 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
 
     // Always add the valid commands first
     if (newCommands.length > 0) {
+      isAddingLocally.current = true
       onCurlCommandsChange([...curlCommands, ...newCommands])
       setTextareaValue('')
     }
@@ -123,11 +135,8 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
     }
 
     // Then surface validation errors (non-blocking)
-    if (validationErrors.length > 0) {
-      setError(validationErrors.join('\n'))
-    } else {
-      setError(null)
-    }
+    // We overwrite previous errors to ensure only the latest batch's errors are shown
+    setErrors(validationErrors)
   }, [curlCommands, onCurlCommandsChange])
 
   const handleAddFromTextarea = () => {
@@ -150,6 +159,10 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
 
   const handleRemoveCommand = (id: string) => {
     onCurlCommandsChange(curlCommands.filter(c => c.id !== id))
+  }
+
+  const handleRemoveError = (index: number) => {
+    setErrors(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleWarningAccept = () => {
@@ -226,7 +239,21 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlIn
         </div>
       )}
 
-      {error && <div className="curl-error">{error}</div>}
+      {errors.length > 0 && (
+        <div className="curl-error-container">
+          {errors.map((error, index) => (
+            <div key={index} className="curl-error">
+              {error}
+              <button
+                className="curl-error-remove-button"
+                onClick={() => handleRemoveError(index)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {duplicateNotice && <div className="duplicate-notice">{duplicateNotice}</div>}
 
       {curlCommands.length > 0 && (

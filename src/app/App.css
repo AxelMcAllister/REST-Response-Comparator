@@ -1,5 +1,5 @@
 #root {
-  max-width: 1400px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -34,7 +34,7 @@
 }
 
 .App-container {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -59,7 +59,7 @@
 
 .App-execute-button {
   padding: 0.625rem 1.75rem;
-  background-color: #4f46e5;
+  background-color: #2196F3; /* Blue */
   color: white;
   border: none;
   border-radius: 6px;
@@ -73,7 +73,7 @@
 }
 
 .App-execute-button:hover:not(:disabled) {
-  background-color: #4338ca;
+  background-color: #1e88e5;
   transform: translateY(-1px);
 }
 

@@ -2,13 +2,26 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin-top: 2rem;
   margin-bottom: 1rem;
 }
 
-.config-actions {
+.config-main-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.config-description-wrapper {
+  flex-grow: 1;
+  min-width: 0; /* Allows text truncation to work */
+}
+
+.config-buttons {
   display: flex;
   gap: 0.5rem;
-  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .config-btn {
@@ -67,4 +80,40 @@
   color: #7c5700;
   background-color: #fff8e1;
   border: 1px solid #f9a825;
+}
+
+/* New styles for apidiffonline.com-like buttons */
+.config-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.config-btn-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.config-btn-export-new {
+  background-color: #4CAF50; /* Green */
+  color: white;
+  border-color: #4CAF50;
+}
+
+.config-btn-export-new:hover {
+  background-color: #45a049;
+  border-color: #45a049;
+}
+
+.config-btn-import-new {
+  background-color: #008CBA; /* Blue */
+  color: white;
+  border-color: #008CBA;
+}
+
+.config-btn-import-new:hover {
+  background-color: #007ba7;
+  border-color: #007ba7;
 }
