@@ -8,7 +8,7 @@ export interface HostInputProps {
   onHostsChange: (hosts: Array<{ id: string; value: string; isReference: boolean }>) => void
 }
 
-export default function HostInput({ hosts, onHostsChange }: HostInputProps) {
+export default function HostInput({ hosts, onHostsChange }: Readonly<HostInputProps>) {
   const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null)

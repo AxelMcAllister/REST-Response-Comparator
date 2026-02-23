@@ -68,7 +68,7 @@ export function parseHosts(input: string | string[]): ParsedHost[] {
  * Validate host format
  */
 export function validateHost(input: string): { valid: boolean; error?: string } {
-  if (!input || !input.trim()) {
+  if (!input?.trim()) {
     return { valid: false, error: 'Host cannot be empty' }
   }
 
@@ -82,7 +82,7 @@ export function validateHost(input: string): { valid: boolean; error?: string } 
 
     // Check for valid hostname characters
     const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-    if (!hostnameRegex.test(parsed.hostname) && !parsed.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
+    if (!hostnameRegex.test(parsed.hostname) && !new RegExp(/^(\d{1,3}\.){3}\d{1,3}$/).exec(parsed.hostname)) {
       return { valid: false, error: 'Invalid hostname format' }
     }
 

@@ -21,7 +21,7 @@ export const ComparisonTab = ({ comparison }: { comparison: ComparisonResult }) 
           <span className="ctab-url">{comparison.parsedCurl.url}</span>
         </h3>
         <p className="ctab-meta">
-          {comparison.hostResponses.length} host{comparison.hostResponses.length !== 1 ? 's' : ''} compared
+          {comparison.hostResponses.length} host{comparison.hostResponses.length === 1 ? '' : 's'} compared
           &nbsp;·&nbsp;
           {new Date(comparison.timestamp).toLocaleTimeString()}
         </p>

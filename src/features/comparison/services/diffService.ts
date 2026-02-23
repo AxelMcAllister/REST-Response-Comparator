@@ -38,7 +38,7 @@ export function sortJsonKeys(value: unknown): unknown {
   }
   if (value !== null && typeof value === 'object') {
     return Object.keys(value as Record<string, unknown>)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .reduce<Record<string, unknown>>((acc, key) => {
         acc[key] = sortJsonKeys((value as Record<string, unknown>)[key])
         return acc
@@ -73,9 +73,9 @@ export function sortJsonKeysCommonFirst(
   const rightKeySet = new Set(rightKeys)
   const leftKeySet = new Set(leftKeys)
 
-  const commonKeys = leftKeys.filter(k => rightKeySet.has(k)).sort()
-  const leftOnlyKeys = leftKeys.filter(k => !rightKeySet.has(k)).sort()
-  const rightOnlyKeys = rightKeys.filter(k => !leftKeySet.has(k)).sort()
+  const commonKeys = leftKeys.filter(k => rightKeySet.has(k)).sort((a, b) => a.localeCompare(b))
+  const leftOnlyKeys = leftKeys.filter(k => !rightKeySet.has(k)).sort((a, b) => a.localeCompare(b))
+  const rightOnlyKeys = rightKeys.filter(k => !leftKeySet.has(k)).sort((a, b) => a.localeCompare(b))
 
   const sortedL: Record<string, unknown> = {}
   const sortedR: Record<string, unknown> = {}

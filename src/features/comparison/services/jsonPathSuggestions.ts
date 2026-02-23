@@ -28,7 +28,7 @@ export function parseJsonPathInput(input: string): { pathPrefix: string; partial
       rest = rest.slice(3).replace(/^\./, '')
       continue
     }
-    const propMatch = rest.match(/^([^.[\]]+)/)
+    const propMatch = new RegExp(/^([^.[\]]+)/).exec(rest)
     if (propMatch) {
       const seg = propMatch[1]
       rest = rest.slice(seg.length).replace(/^\./, '')
@@ -137,7 +137,7 @@ export function buildLineToPathMap(
     map.set(i + 1, currentPath)
 
     if (trimmed.startsWith('"') && trimmed.includes('":')) {
-      const keyMatch = trimmed.match(/^"([^"]+)":\s*(\{|\[)?/)
+      const keyMatch = new RegExp(/^"([^"]+)":\s*([{[])?/).exec(trimmed)
       if (keyMatch) {
         const key = keyMatch[1]
         const keyPath = currentPath === '$' ? '$.' + key : currentPath + '.' + key

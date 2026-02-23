@@ -16,7 +16,7 @@ export default function LineNumberedTextarea({
     onChange,
     placeholder,
     className = '',
-}: LineNumberedTextareaProps) {
+}: Readonly<LineNumberedTextareaProps>) {
     const gutterRef = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 

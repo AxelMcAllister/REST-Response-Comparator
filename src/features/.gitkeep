@@ -1,2 +1,2 @@
 # Features folder - self-contained feature modules go here
-# Each feature should have: components/, hooks/, services/, store/, types.ts, index.ts
+# Each feature should have: components/, hooks/, services/, store/, index.ts

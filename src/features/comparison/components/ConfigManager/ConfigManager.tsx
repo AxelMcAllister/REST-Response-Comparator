@@ -43,9 +43,9 @@ export const ConfigManager = () => {
 
     try {
       // @ts-expect-error - showSaveFilePicker is not yet in all TS definitions
-      if (window.showSaveFilePicker) {
+      if (globalThis.showSaveFilePicker) {
         // @ts-expect-error - showSaveFilePicker is not yet in all TS definitions
-        const handle = await window.showSaveFilePicker({
+        const handle = await globalThis.showSaveFilePicker({
           suggestedName: defaultFilename,
           types: [{
             description: 'RRC Configuration File',
@@ -65,7 +65,7 @@ export const ConfigManager = () => {
         link.rel = 'noopener'
         document.body.appendChild(link)
         link.click()
-        document.body.removeChild(link)
+        link.remove()
         setTimeout(() => URL.revokeObjectURL(url), 500)
       }
     } catch (err) {

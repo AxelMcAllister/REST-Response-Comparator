@@ -9,8 +9,8 @@ interface HostInputFieldProps {
   onUpdate: (value: string) => void
 }
 
-export default function HostInputField({ host, index, onRemove, onToggleReference, onUpdate }: HostInputFieldProps) {
-  const tag = String.fromCharCode(65 + index)
+export default function HostInputField({ host, index, onRemove, onToggleReference, onUpdate }: Readonly<HostInputFieldProps>) {
+  const tag = String.fromCodePoint(65 + index)
 
   return (
     <div className={`host-input-field-item ${host.isReference ? 'is-reference' : ''}`}>

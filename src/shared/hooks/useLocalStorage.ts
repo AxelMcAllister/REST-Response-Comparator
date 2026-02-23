@@ -14,7 +14,7 @@ export function useLocalStorage<T>(
   // Lazy initialization - only runs on mount
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
-      const item = window.localStorage.getItem(versionedKey)
+      const item = globalThis.localStorage.getItem(versionedKey)
       return item ? JSON.parse(item) : initialValue
     } catch {
       return initialValue
@@ -25,9 +25,11 @@ export function useLocalStorage<T>(
   const setValue = useCallback(
     (value: T | ((val: T) => T)) => {
       setStoredValue((prev) => {
-        const newValue = value instanceof Function ? value(prev) : value
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        const newValue = typeof value === 'function' ? value(prev) : value
         try {
-          window.localStorage.setItem(versionedKey, JSON.stringify(newValue))
+          globalThis.localStorage.setItem(versionedKey, JSON.stringify(newValue))
         } catch {
           // Fails in incognito, quota exceeded, or disabled
         }

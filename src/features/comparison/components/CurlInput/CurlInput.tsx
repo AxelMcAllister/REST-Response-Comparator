@@ -54,7 +54,7 @@ interface CurlInputProps {
   onCurlCommandsChange: (commands: CurlCommand[]) => void
 }
 
-export default function CurlInput({ curlCommands, onCurlCommandsChange }: CurlInputProps) {
+export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readonly<CurlInputProps>) {
   const [textareaValue, setTextareaValue] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null)

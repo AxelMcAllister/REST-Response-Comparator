@@ -197,7 +197,7 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
 
   const applySuggestion = (suggestion: string) => {
     const sep = pathPrefix === '$' || pathPrefix.endsWith('[*]') ? '' : '.'
-    const newPath = pathPrefix + sep + suggestion + (suggestion !== '[*]' ? '.' : '')
+    const newPath = pathPrefix + sep + suggestion + (suggestion === '[*]' ? '' : '.')
     setJsonPath(newPath)
     setSuggestionsOpen(false)
     jsonPathInputRef.current?.focus()
@@ -258,7 +258,7 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
       const isLeft = lineId.startsWith('L-')
       const isRight = lineId.startsWith('R-')
       if (!isLeft && !isRight) return
-      const lineNum = parseInt(lineId.slice(2), 10)
+      const lineNum = Number.parseInt(lineId.slice(2), 10)
       if (!Number.isFinite(lineNum)) return
       const path = isLeft
         ? lineToPathMap.get(lineNum)
@@ -271,7 +271,7 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
   const getHostTag = (hostId: string) => {
     const index = hosts.findIndex(h => h.id === hostId)
     if (index === -1) return null
-    return <span className="diff-host-tag">{String.fromCharCode(65 + index)}</span>
+    return <span className="diff-host-tag">{String.fromCodePoint(65 + index)}</span>
   }
 
   return (

@@ -92,7 +92,7 @@ export function parseCurl(curlCommand: string): ParsedCurl {
   }
 
   // Extract method (-X flag)
-  const methodMatch = command.match(/-X\s+(\w+)/i)
+  const methodMatch = new RegExp(/-X\s+(\w+)/i).exec(command)
   if (methodMatch) {
     parsed.method = methodMatch[1].toUpperCase()
     command = command.replace(methodMatch[0], '')
@@ -116,7 +116,7 @@ export function parseCurl(curlCommand: string): ParsedCurl {
   })
 
   // Extract body (-d or --data flag)
-  const bodyMatch = command.match(/(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+([^\s]+)/)
+  const bodyMatch = new RegExp(/(?:-d|--data)\s+['"]([^'"]+)['"]|(?:-d|--data)\s+(\S+)/).exec(command)
   if (bodyMatch) {
     parsed.body = bodyMatch[1] || bodyMatch[2]
     command = command.replace(bodyMatch[0], '')
@@ -127,12 +127,12 @@ export function parseCurl(curlCommand: string): ParsedCurl {
 
   // 1. Check for quoted URL (single or double quotes)
   // Matches 'url' or "url" and captures the content inside
-  const quotedUrlMatch = cleanCommand.match(/^(['"])(.*?)\1/)
+  const quotedUrlMatch = new RegExp(/^(['"])(.*?)\1/).exec(cleanCommand)
   if (quotedUrlMatch) {
     parsed.url = quotedUrlMatch[2].trim()
   } else {
     // 2. Fallback to finding http/https or path
-    const urlMatch = cleanCommand.match(/(https?:\/\/[^\s]+|\/[^\s]*)/)
+    const urlMatch = new RegExp(/(https?:\/\/\S+|\/\S*)/).exec(cleanCommand)
     if (urlMatch) {
       parsed.url = urlMatch[1].trim()
     } else {
@@ -203,7 +203,7 @@ export function autoDetectHostPlaceholder(curlCommand: string): string {
  *  4. Contains a URL
  */
 export function validateCurl(curlCommand: string): { valid: boolean; error?: string } {
-  if (!curlCommand || !curlCommand.trim()) {
+  if (!curlCommand?.trim()) {
     return { valid: false, error: 'cURL command cannot be empty' }
   }
 
@@ -223,7 +223,7 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
   //    Strip curl keyword, all quoted strings (flag values/URLs), and bare URLs
   //    so only flag tokens remain for inspection.
   let stripped = normalized.replace(/^curl\s*/i, '')
-  stripped = stripped.replace(/(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '')
+  stripped = stripped.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '')
   stripped = stripped.replace(/https?:\/\/\S+/g, '')
 
   const tokens = stripped.trim().split(/\s+/).filter(Boolean)
@@ -265,7 +265,7 @@ export function validateCurl(curlCommand: string): { valid: boolean; error?: str
  */
 export function formatParsedCurlToCommand(parsed: ParsedCurl): string {
   // Escape single quotes in URL to prevent breaking the command
-  const safeUrl = parsed.url.replace(/'/g, "'\\''");
+  const safeUrl = parsed.url.replace(/'/g, String.raw`'\''`);
   let command = `curl '${safeUrl}'`;
 
   if (parsed.method && parsed.method.toUpperCase() !== 'GET') {
@@ -274,13 +274,13 @@ export function formatParsedCurlToCommand(parsed: ParsedCurl): string {
 
   for (const key in parsed.headers) {
     // Escape quotes in header values
-    const value = parsed.headers[key].replace(/'/g, "'\\''");
+    const value = parsed.headers[key].replace(/'/g, String.raw`'\''`);
     command += ` -H '${key}: ${value}'`;
   }
 
   if (parsed.body) {
     // Escape quotes in body
-    const body = parsed.body.replace(/'/g, "'\\''");
+    const body = parsed.body.replace(/'/g, String.raw`'\''`);
     command += ` -d '${body}'`;
   }
 

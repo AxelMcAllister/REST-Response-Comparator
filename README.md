@@ -121,7 +121,7 @@ import type { Host, ComparisonResult } from '@/shared/types'
 When adding features:
 
 1. Prefer a new or existing feature under `src/features/[feature-name]/`.
-2. Keep structure: `components/`, `hooks/`, `services/`, `store/`, `types.ts`, `index.ts` as needed.
+2. Keep structure: `components/`, `hooks/`, `services/`, `store/`, `index.ts` as needed.
 3. Use path aliases (`@/`) for imports.
 4. Use functional setState and proper TypeScript types.
 5. Use AbortController (or equivalent) for cancelable async work.

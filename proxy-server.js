@@ -1,6 +1,6 @@
-import http from 'http';
-import https from 'https';
-import { URL } from 'url';
+import http from 'node:http';
+import https from 'node:https';
+import { URL } from 'node:url';
 
 const PORT = 3001;
 
