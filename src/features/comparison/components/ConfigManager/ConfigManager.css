@@ -15,7 +15,8 @@
 
 .config-description-wrapper {
   flex-grow: 1;
-  min-width: 0; /* Allows text truncation to work */
+  min-width: 0;
+  /* Allows text truncation to work */
 }
 
 .config-buttons {
@@ -49,13 +50,7 @@
   cursor: not-allowed;
 }
 
-.config-btn-export {
-  color: #059669;
-}
 
-.config-btn-import {
-  color: #2563eb;
-}
 
 .config-message {
   font-size: 0.875rem;
@@ -97,7 +92,8 @@
 }
 
 .config-btn-export-new {
-  background-color: #4CAF50; /* Green */
+  background-color: #4CAF50;
+  /* Green */
   color: white;
   border-color: #4CAF50;
 }
@@ -108,7 +104,8 @@
 }
 
 .config-btn-import-new {
-  background-color: #008CBA; /* Blue */
+  background-color: #008CBA;
+  /* Blue */
   color: white;
   border-color: #008CBA;
 }

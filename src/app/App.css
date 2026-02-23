@@ -86,25 +86,7 @@
   cursor: not-allowed;
 }
 
-.App-ready {
-  margin-top: 2rem;
-  padding: 1rem;
-  background-color: #e8f5e9;
-  border: 1px solid #4caf50;
-  border-radius: 4px;
-  text-align: center;
-}
 
-.App-ready p {
-  margin: 0.5rem 0;
-  color: #2e7d32;
-}
-
-.App-note {
-  font-size: 0.875rem;
-  font-style: italic;
-  color: #666;
-}
 
 .App-warning-modal {
   position: fixed;

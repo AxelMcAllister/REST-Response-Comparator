@@ -177,11 +177,6 @@
   border-radius: 4px;
 }
 
-.curl-list-item.has-error {
-  background-color: #fff5f5;
-  border: 1px solid #feb2b2;
-}
-
 .curl-line-number {
   display: inline-flex;
   align-items: center;
@@ -201,36 +196,6 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-.curl-command-input {
-  width: 100%;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  background-color: transparent;
-  font-family: monospace;
-  font-size: 0.875rem;
-  color: #374151;
-  transition: border-color 0.2s, background-color 0.2s;
-}
-
-.curl-command-input:hover {
-  background-color: #fff;
-  border-color: #d1d5db;
-}
-
-.curl-command-input:focus {
-  background-color: #fff;
-  border-color: #2563eb;
-  outline: none;
-}
-
-.curl-command-error {
-  font-size: 0.75rem;
-  color: #dc2626;
-  margin-top: 0.25rem;
-  padding-left: 0.5rem;
 }
 
 .curl-remove-button {

@@ -16,8 +16,9 @@ export const GlobalOptionsPanel = () => {
         }
     }, [isOpen, globalOptions])
 
-    const handleCustomPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const paths = e.target.value
+    const handleCustomPathChange = (e: React.ChangeEvent<HTMLInputElement> | React.KeyboardEvent<HTMLInputElement>) => {
+        const target = e.target as HTMLInputElement
+        const paths = target.value
             .split(',')
             .map(p => p.trim())
             .filter(p => p.length > 0)
@@ -128,7 +129,7 @@ export const GlobalOptionsPanel = () => {
                                     onBlur={handleCustomPathChange}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
-                                            handleCustomPathChange(e as any)
+                                            handleCustomPathChange(e)
                                             e.currentTarget.blur()
                                         }
                                     }}

@@ -37,9 +37,12 @@ export default function HostInput({ hosts, onHostsChange }: Readonly<HostInputPr
     }
 
     // Skip duplicates by normalized URL
-    const existingValues = new Set(hosts.map(h => h.value))
-    const unique = parsed.filter(h => !existingValues.has(h.normalized))
-    const skipped = parsed.filter(h => existingValues.has(h.normalized))
+    const existingNormalized = new Set(hosts.map(h => {
+      const p = parseHosts([h.value])[0]
+      return p.normalized
+    }))
+    const unique = parsed.filter(h => !existingNormalized.has(h.normalized))
+    const skipped = parsed.filter(h => existingNormalized.has(h.normalized))
 
     if (skipped.length > 0) {
       setDuplicateNotice(`Already in list (skipped): ${skipped.map(h => h.normalized).join(', ')}`)

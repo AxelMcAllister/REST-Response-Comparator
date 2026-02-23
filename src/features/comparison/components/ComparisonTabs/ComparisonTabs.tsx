@@ -8,7 +8,7 @@ import './ComparisonTabs.css'
  * Generate a tab label from a comparison result.
  * Returns just the cURL number (1-based).
  */
-function getShortLabel(comparison: ComparisonResult): string {
+function getTabLabel(comparison: ComparisonResult): string {
   return `${comparison.curlIndex + 1}`
 }
 
@@ -55,7 +55,7 @@ export const ComparisonTabs = () => {
   // Derived: comparisons in user-determined order
   const orderedComparisons = tabOrder
     .map(id => comparisons.find(c => c.id === id))
-    .filter(Boolean) as ComparisonResult[]
+    .filter((c): c is ComparisonResult => c !== undefined)
 
   // ── Rename ────────────────────────────────────────────────────────────────
 
@@ -117,7 +117,7 @@ export const ComparisonTabs = () => {
       {/* Tab Bar */}
       <div className="ctabs-bar" role="tablist" aria-label="Comparison results">
         {orderedComparisons.map((comparison) => {
-          const generatedLabel = getShortLabel(comparison)
+          const generatedLabel = getTabLabel(comparison)
           const label = labelOverrides[comparison.id] ?? generatedLabel
           const isActive = activeTabId === comparison.id
           const isDragOver = dragOverId === comparison.id

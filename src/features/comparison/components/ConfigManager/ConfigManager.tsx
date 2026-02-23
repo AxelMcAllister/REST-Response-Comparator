@@ -6,6 +6,14 @@ import { EditableLabel } from '@/shared/components/EditableLabel/EditableLabel'
 import { GlobalOptionsPanel } from '../GlobalOptionsPanel/GlobalOptionsPanel'
 import './ConfigManager.css'
 
+// File System Access API type declaration
+declare global {
+  function showSaveFilePicker(options?: {
+    suggestedName?: string
+    types?: Array<{ description: string; accept: Record<string, string[]> }>
+  }): Promise<FileSystemFileHandle>
+}
+
 /** Simplified export format: reference host prefixed with *, no ids, no normalizedUrl */
 export interface ExportConfig {
   hosts: string[]
@@ -42,10 +50,8 @@ export const ConfigManager = () => {
     const defaultFilename = `config-${timestamp}.rrc.json`
 
     try {
-      // @ts-expect-error - showSaveFilePicker is not yet in all TS definitions
-      if (globalThis.showSaveFilePicker) {
-        // @ts-expect-error - showSaveFilePicker is not yet in all TS definitions
-        const handle = await globalThis.showSaveFilePicker({
+      if (typeof showSaveFilePicker === 'function') {
+        const handle = await showSaveFilePicker({
           suggestedName: defaultFilename,
           types: [{
             description: 'RRC Configuration File',
@@ -71,7 +77,6 @@ export const ConfigManager = () => {
     } catch (err) {
       // User cancelled or other error
       if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('Export failed:', err)
         setError('Failed to save file.')
       }
     }
@@ -97,10 +102,8 @@ export const ConfigManager = () => {
     setSuccess(null)
     setDuplicateNotice(null)
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
+    file.text().then(content => {
       try {
-        const content = e.target?.result as string
         const raw = JSON.parse(content)
 
         // Validate basic structure
@@ -160,23 +163,20 @@ export const ConfigManager = () => {
         if (importedDescription) setDescription(importedDescription)
 
         // --- Report to User ---
-        const parts: string[] = []
         if (newHosts.length > 0 || newCurls.length > 0) {
-          parts.push(`Added: ${newHosts.length} host(s), ${newCurls.length} command(s).`)
-          setSuccess(parts[0])
+          setSuccess(`Added: ${newHosts.length} host(s), ${newCurls.length} command(s).`)
           setTimeout(() => setSuccess(null), 4000)
         }
         if (skippedHosts > 0 || skippedCurls > 0) {
-          const notice = `Skipped as duplicates: ${skippedHosts} host(s), ${skippedCurls} command(s).`
-          setDuplicateNotice(notice)
+          setDuplicateNotice(`Skipped as duplicates: ${skippedHosts} host(s), ${skippedCurls} command(s).`)
         }
 
       } catch (err) {
-        console.error('Import failed:', err)
         setError(err instanceof Error ? err.message : 'Failed to parse configuration file')
       }
-    }
-    reader.readAsText(file)
+    }).catch(() => {
+      setError('Failed to read file')
+    })
   }
 
   return (
