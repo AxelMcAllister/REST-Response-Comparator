@@ -105,7 +105,7 @@ export function getJsonPathSuggestions(
     }
   }
 
-  return Array.from(seen).sort((a, b) => a.localeCompare(b))
+  return Array.from(seen).toSorted((a, b) => a.localeCompare(b))
 }
 
 export function parseResponseData(data: unknown): unknown {

@@ -88,17 +88,21 @@ src/
    - Copy `.env.example` to `.env` if present, or create a `.env` with:
    - `VITE_API_URL` – optional; API base URL (defaults to `/api`). Omit to call same origin or use the proxy.
 
-3. Start the development server:
+3. Start the application (starts both dev server and CORS proxy):
 
    ```bash
-   npm run dev
+   npm run start
    ```
 
 4. Open the URL shown in the terminal (e.g. `http://localhost:5173`).
 
 ### CORS Proxy
 
-In development, direct cross-origin requests may fail. A lightweight CORS proxy is included:
+In development, direct cross-origin requests may fail. A lightweight CORS proxy is included.
+
+If you started the app with `npm run start`, the proxy is already running alongside your dev server!
+
+Alternatively, you can run the proxy individually:
 
 ```bash
 npm run proxy
@@ -108,26 +112,27 @@ This starts `proxy-server.js` on `http://localhost:3001`. The app automatically 
 
 ### Available Scripts
 
-| Script       | Description                |
-| ------------ | -------------------------- |
-| `npm run dev`    | Start Vite dev server      |
-| `npm run build`  | TypeScript check + production build |
-| `npm run preview`| Preview production build   |
-| `npm run lint`   | Run ESLint                 |
-| `npm run proxy`  | Run standalone CORS proxy server (`node proxy-server.js`) |
+| Script            | Description                                               |
+|-------------------|-----------------------------------------------------------|
+| `npm run start`   | Start Vite dev server and CORS proxy concurrently         |
+| `npm run dev`     | Start Vite dev server                                     |
+| `npm run build`   | TypeScript check + production build                       |
+| `npm run preview` | Preview production build                                  |
+| `npm run lint`    | Run ESLint                                                |
+| `npm run proxy`   | Run standalone CORS proxy server (`node proxy-server.js`) |
 
 ## Technologies
 
-| Category     | Stack |
-| ------------ | ----- |
-| UI           | **React 19** |
-| Language     | **TypeScript** (strict) |
-| Build        | **Vite 5** |
-| State        | **Zustand** |
-| HTTP         | **Axios** |
-| Diff UI      | **react-diff-viewer-continued** |
-| Filtering    | **jsonpath-plus** |
-| Lint         | ESLint |
+| Category  | Stack                           |
+|-----------|---------------------------------|
+| UI        | **React 19**                    |
+| Language  | **TypeScript** (strict)         |
+| Build     | **Vite 5**                      |
+| State     | **Zustand**                     |
+| HTTP      | **Axios**                       |
+| Diff UI   | **react-diff-viewer-continued** |
+| Filtering | **jsonpath-plus**               |
+| Lint      | ESLint                          |
 
 ## Path Aliases
 
@@ -140,6 +145,8 @@ import type { Host, ComparisonResult } from '@/shared/types'
 ## Best Practices in Use
 
 - **Performance** – Functional setState, `useCallback` where appropriate, lazy state init, memoization.
+- **Immutability** – Using `toSorted()` instead of mutating `sort()` for arrays.
+- **Rendering Stability** – Using stable unique IDs for mapped list items (avoiding index-as-key patterns).
 - **Structure** – Feature-based folders, path aliases, TypeScript strict mode, barrel exports.
 - **Reuse** – Shared components (`EditableLabel`), shared types, centralized store.
 - **Safety** – Try/catch around storage, env-based config, proxy fallback for CORS.

@@ -56,7 +56,7 @@ interface CurlInputProps {
 
 export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readonly<CurlInputProps>) {
   const [textareaValue, setTextareaValue] = useState('')
-  const [errors, setErrors] = useState<string[]>([])
+  const [errors, setErrors] = useState<{ id: string; message: string }[]>([])
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null)
   const [warning, setWarning] = useState<CommandWarning[]>([])
   const isAddingLocally = useRef(false)
@@ -71,7 +71,7 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readon
 
   const addCommands = useCallback((parsedCommands: ParsedCommand[]) => {
     const newCommands: CurlCommand[] = []
-    const validationErrors: string[] = []
+    const validationErrors: { id: string; message: string }[] = []
     const missingHostQueue: CommandWarning[] = []
     const duplicateSkipped: string[] = []
 
@@ -83,7 +83,7 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readon
 
       const validation = validateCurl(trimmed)
       if (!validation.valid) {
-        validationErrors.push(`${location(startLine)}: ${validation.error}`)
+        validationErrors.push({ id: `error-${Date.now()}-${index}`, message: `${location(startLine)}: ${validation.error}` })
         return
       }
 
@@ -133,7 +133,7 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readon
     // 1. Validate syntax
     const validation = validateCurl(value)
     if (!validation.valid) {
-      setErrors([`Update failed: ${validation.error}`])
+      setErrors([{ id: `error-update-${Date.now()}`, message: `Update failed: ${validation.error}` }])
       return
     }
 
@@ -154,8 +154,8 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readon
     onCurlCommandsChange(curlCommands.filter(c => c.id !== id))
   }
 
-  const handleRemoveError = (index: number) => {
-    setErrors(prev => prev.filter((_, i) => i !== index))
+  const handleRemoveError = (id: string) => {
+    setErrors(prev => prev.filter(e => e.id !== id))
   }
 
   const handleWarningAccept = () => {
@@ -209,12 +209,12 @@ export default function CurlInput({ curlCommands, onCurlCommandsChange }: Readon
 
       {errors.length > 0 && (
         <div className="curl-error-container">
-          {errors.map((error, index) => (
-            <div key={index} className="curl-error">
-              {error}
+          {errors.map((error) => (
+            <div key={error.id} className="curl-error">
+              {error.message}
               <button
                 className="curl-error-remove-button"
-                onClick={() => handleRemoveError(index)}
+                onClick={() => handleRemoveError(error.id)}
               >
                 ×
               </button>
