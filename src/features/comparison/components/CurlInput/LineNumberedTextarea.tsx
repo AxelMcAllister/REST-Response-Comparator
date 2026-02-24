@@ -22,7 +22,7 @@ export default function LineNumberedTextarea({
 
     const lineCount = value ? value.split('\n').length : 1
 
-    // Keep gutter scroll in sync with textarea scroll
+    // Keep the gutter scroll in sync with the textarea scroll
     const handleScroll = useCallback(() => {
         if (gutterRef.current && textareaRef.current) {
             gutterRef.current.scrollTop = textareaRef.current.scrollTop

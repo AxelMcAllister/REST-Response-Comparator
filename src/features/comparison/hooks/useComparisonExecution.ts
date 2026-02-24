@@ -11,6 +11,7 @@ export const useComparisonExecution = () => {
     curlCommands,
     comparisons,
     parallelMode,
+    globalOptions,
     setIsExecuting,
     addComparison,
     updateComparison,
@@ -82,7 +83,8 @@ export const useComparisonExecution = () => {
           referenceHostId: referenceHost.id,
           hostResponses,
           differences,
-          status: 'completed'
+          status: 'completed',
+          options: { ...globalOptions }
         }
 
         addComparison(comparison)
@@ -141,7 +143,8 @@ export const useComparisonExecution = () => {
         referenceHostId: referenceHost.id,
         hostResponses,
         differences,
-        status: 'completed'
+        status: 'completed',
+        options: comparison.options || { ...globalOptions }
       })
     } catch {
       updateComparison(comparisonId, { status: 'error' })

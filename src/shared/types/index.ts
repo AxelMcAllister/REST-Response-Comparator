@@ -38,6 +38,15 @@ export interface HostResponse {
   responseTime?: number
 }
 
+export interface ComparisonOptions {
+  ignoreTimestamps: boolean
+  ignoreIds: boolean
+  ignoreWhitespace: boolean
+  caseInsensitive: boolean
+  ignoreArrayOrder: boolean
+  customIgnorePaths: string[] // JSONPath patterns
+}
+
 export interface ComparisonResult {
   id: string
   curlIndex: number
@@ -48,6 +57,7 @@ export interface ComparisonResult {
   hostResponses: HostResponse[]
   differences: HostDifference[]
   status: 'loading' | 'completed' | 'error'
+  options: ComparisonOptions
 }
 
 export interface HostDifference {
@@ -63,12 +73,3 @@ export interface Difference {
 }
 
 export type ParallelExecutionMode = 'all-at-once' | 'per-curl'
-
-export interface ComparisonOptions {
-  ignoreTimestamps: boolean
-  ignoreIds: boolean
-  ignoreWhitespace: boolean
-  caseInsensitive: boolean
-  ignoreArrayOrder: boolean
-  customIgnorePaths: string[] // JSONPath patterns
-}

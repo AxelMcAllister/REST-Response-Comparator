@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
 import { useComparisonStore } from '../../store/comparisonStore'
-import type { ComparisonResult } from '@/shared/types'
-import { formatResponseData, sortJsonKeys, sortJsonKeysCommonFirst, applyJsonPath } from '../../services/diffService'
+import type { ComparisonResult, ComparisonOptions } from '@/shared/types'
+import { formatResponseData, sortJsonKeys, sortJsonKeysCommonFirst, applyJsonPath, preprocessData } from '../../services/diffService'
 import { parseJsonPathInput, getJsonPathSuggestions, buildLineToPathMap, parseResponseData } from '../../services/jsonPathSuggestions'
 import { replaceHostInParsedCurl } from '../../services/hostReplacer'
 import { parseHost } from '../../services/hostParser'
@@ -55,13 +55,24 @@ function computeHostDisplayValue(
   hostData: unknown,
   refData: unknown,
   sortMode: 'original' | 'alpha' | 'common-first',
-  jsonPath: string
+  jsonPath: string,
+  options?: ComparisonOptions
 ): unknown {
   let hostVal: unknown = parseResponseData(hostData)
   if (hostVal === undefined || hostVal === null) return hostVal
 
+  if (options) {
+    hostVal = preprocessData(hostVal, options)
+  }
+
   if (sortMode === 'common-first') {
-    const [, right] = sortJsonKeysCommonFirst(parseResponseData(refData), hostVal)
+    // Note: refData should also be preprocessed before passed here if we want accurate common keys
+    // But computeHostDisplayValue is called with raw refData.
+    // We should probably preprocess refData too.
+    let refVal = parseResponseData(refData)
+    if (options) refVal = preprocessData(refVal, options)
+    
+    const [, right] = sortJsonKeysCommonFirst(refVal, hostVal)
     hostVal = right
   } else if (sortMode === 'alpha') {
     hostVal = sortJsonKeys(hostVal)
@@ -76,7 +87,7 @@ function computeHostDisplayValue(
 }
 
 export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResult }) => {
-  const { hosts } = useComparisonStore()
+  const { hosts, updateComparison } = useComparisonStore()
   const [expandedHosts, setExpandedHosts] = useState<Record<string, boolean>>({})
   const [copyStatus, setCopyStatus] = useState<Record<string, string>>({})
   const [sortMode, setSortMode] = useState<'original' | 'alpha' | 'common-first'>('original')
@@ -114,6 +125,12 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     el?.scrollIntoView({ block: 'nearest' })
   }, [showSuggestions, effectiveHighlightIndex])
 
+  const updateOption = (key: keyof ComparisonOptions, value: any) => {
+    if (!comparison.options) return
+    const newOptions = { ...comparison.options, [key]: value }
+    updateComparison(comparison.id, { options: newOptions })
+  }
+
   /**
    * Apply sort + JSONPath filter to a pair of parsed values.
    * Returns { refText, hostText, filterError? }
@@ -124,6 +141,12 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
   ): { refText: string; hostText: string; filterError?: string } => {
     let refVal = parseResponseData(refRaw)
     let hostVal = parseResponseData(hostRaw)
+
+    // 0. Preprocess (Apply options)
+    if (comparison.options) {
+      refVal = preprocessData(refVal, comparison.options)
+      hostVal = preprocessData(hostVal, comparison.options)
+    }
 
     // 1. Sort
     if (sortMode === 'alpha') {
@@ -151,8 +174,8 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     if (sortMode === 'alpha' && !jsonPath.trim()) {
       // Use formatResponseData which handles alpha sort including string inputs
       return {
-        refText: formatResponseData(refRaw, true),
-        hostText: formatResponseData(hostRaw, true)
+        refText: formatResponseData(refVal, true), // Pass preprocessed val
+        hostText: formatResponseData(hostVal, true) // Pass preprocessed val
       }
     }
 
@@ -179,8 +202,15 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
     if (!referenceHost) return new Map<number, string>()
     let refVal: unknown = parseResponseData(referenceHost.response?.data)
     if (refVal === undefined || refVal === null) return new Map<number, string>()
+    
+    if (comparison.options) {
+      refVal = preprocessData(refVal, comparison.options)
+    }
+
     if (sortMode === 'common-first' && otherHosts[0]?.response?.data != null) {
-      const [left] = sortJsonKeysCommonFirst(refVal, parseResponseData(otherHosts[0].response?.data))
+      let otherVal = parseResponseData(otherHosts[0].response?.data)
+      if (comparison.options) otherVal = preprocessData(otherVal, comparison.options)
+      const [left] = sortJsonKeysCommonFirst(refVal, otherVal)
       refVal = left
     } else if (sortMode === 'alpha') {
       refVal = sortJsonKeys(refVal)
@@ -190,7 +220,7 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
       if (!res.error) refVal = res.result
     }
     return buildLineToPathMap(refVal, jsonPath.trim() || '$')
-  }, [referenceHost, otherHosts, sortMode, jsonPath])
+  }, [referenceHost, otherHosts, sortMode, jsonPath, comparison.options])
 
   const handleLineNumberClick = useCallback(
     (lineId: string, rightLineToPathMap?: Map<number, string>) => {
@@ -297,87 +327,147 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
 
   return (
     <div className="diff-pairs">
-      {/* Sort + JSONPath toolbar */}
-      <div className="diff-toolbar">
-        <span className="diff-toolbar-label">Key order:</span>
-        <div className="diff-sort-toggle">
-          <button
-            className={sortMode === 'original' ? 'active' : ''}
-            onClick={() => setSortMode('original')}
-          >
-            Original
-          </button>
-          <button
-            className={sortMode === 'alpha' ? 'active' : ''}
-            onClick={() => setSortMode('alpha')}
-          >
-            Alphabetical
-          </button>
-          <button
-            className={sortMode === 'common-first' ? 'active' : ''}
-            onClick={() => setSortMode('common-first')}
-          >
-            Common first
-          </button>
-        </div>
-        <span className="diff-toolbar-separator">|</span>
-        <span className="diff-toolbar-label">JSONPath:</span>
-        <div className="diff-jsonpath-wrap">
-          <div className="diff-jsonpath-autocomplete">
-            <input
-              ref={jsonPathInputRef}
-              type="text"
-              className={`diff-jsonpath-input${filterError ? ' diff-jsonpath-input--error' : ''}`}
-              placeholder="$.items[*].id"
-              value={jsonPath}
-              onChange={e => {
-                setJsonPath(e.target.value)
-                setSuggestionsOpen(true)
-              }}
-              onFocus={() => suggestions.length > 0 && setSuggestionsOpen(true)}
-              onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
-              onKeyDown={handleJsonPathKeyDown}
-              spellCheck={false}
-              autoComplete="off"
-              role="combobox"
-              aria-expanded={showSuggestions}
-              aria-controls="diff-jsonpath-suggestions"
-              aria-activedescendant={showSuggestions && suggestions[effectiveHighlightIndex] != null ? `diff-jsonpath-suggestion-${effectiveHighlightIndex}` : undefined}
-            />
-            {showSuggestions && (
-              <ul
-                id="diff-jsonpath-suggestions"
-                ref={suggestionsListRef}
-                className="diff-jsonpath-suggestions"
-              >
-                {suggestions.map((s, i) => (
-                  <li
-                    key={s}
-                    id={`diff-jsonpath-suggestion-${i}`}
-                    className={i === effectiveHighlightIndex ? 'diff-jsonpath-suggestion--active' : ''}
-                  >
-                    <button
-                      type="button"
-                      className="diff-jsonpath-suggestion-btn"
-                      onMouseDown={e => { e.preventDefault(); applySuggestion(s) }}
+      <div className="diff-toolbar-container">
+        {/* Sort + JSONPath toolbar */}
+        <div className="diff-toolbar">
+          <span className="diff-toolbar-label">Key order:</span>
+          <div className="diff-sort-toggle">
+            <button
+              className={sortMode === 'original' ? 'active' : ''}
+              onClick={() => setSortMode('original')}
+            >
+              Original
+            </button>
+            <button
+              className={sortMode === 'alpha' ? 'active' : ''}
+              onClick={() => setSortMode('alpha')}
+            >
+              Alphabetical
+            </button>
+            <button
+              className={sortMode === 'common-first' ? 'active' : ''}
+              onClick={() => setSortMode('common-first')}
+            >
+              Common first
+            </button>
+          </div>
+          <span className="diff-toolbar-separator">|</span>
+          <span className="diff-toolbar-label">JSONPath:</span>
+          <div className="diff-jsonpath-wrap">
+            <div className="diff-jsonpath-autocomplete">
+              <input
+                ref={jsonPathInputRef}
+                type="text"
+                className={`diff-jsonpath-input${filterError ? ' diff-jsonpath-input--error' : ''}`}
+                placeholder="$.items[*].id"
+                value={jsonPath}
+                onChange={e => {
+                  setJsonPath(e.target.value)
+                  setSuggestionsOpen(true)
+                }}
+                onFocus={() => suggestions.length > 0 && setSuggestionsOpen(true)}
+                onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
+                onKeyDown={handleJsonPathKeyDown}
+                spellCheck={false}
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showSuggestions}
+                aria-controls="diff-jsonpath-suggestions"
+                aria-activedescendant={showSuggestions && suggestions[effectiveHighlightIndex] != null ? `diff-jsonpath-suggestion-${effectiveHighlightIndex}` : undefined}
+              />
+              {showSuggestions && (
+                <ul
+                  id="diff-jsonpath-suggestions"
+                  ref={suggestionsListRef}
+                  className="diff-jsonpath-suggestions"
+                >
+                  {suggestions.map((s, i) => (
+                    <li
+                      key={s}
+                      id={`diff-jsonpath-suggestion-${i}`}
+                      className={i === effectiveHighlightIndex ? 'diff-jsonpath-suggestion--active' : ''}
                     >
-                      {s}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      <button
+                        type="button"
+                        className="diff-jsonpath-suggestion-btn"
+                        onMouseDown={e => { e.preventDefault(); applySuggestion(s) }}
+                      >
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {jsonPath && (
+              <button
+                className="diff-jsonpath-clear"
+                onClick={() => { setJsonPath(''); setSuggestionsOpen(false); }}
+                title="Clear filter"
+              >✕</button>
             )}
           </div>
-          {jsonPath && (
-            <button
-              className="diff-jsonpath-clear"
-              onClick={() => { setJsonPath(''); setSuggestionsOpen(false); }}
-              title="Clear filter"
-            >✕</button>
-          )}
+          {filterError && <span className="diff-jsonpath-error">{filterError}</span>}
         </div>
-        {filterError && <span className="diff-jsonpath-error">{filterError}</span>}
+
+        {/* Comparison Options Toolbar */}
+        {comparison.options && (
+          <div className="diff-options-toolbar">
+            <span className="diff-toolbar-label">Comparison Options:</span>
+            <label className="diff-option-label" title="Ignores changes to common timestamp fields (e.g. updatedAt)">
+              <input
+                type="checkbox"
+                checked={comparison.options.ignoreTimestamps}
+                onChange={e => updateOption('ignoreTimestamps', e.target.checked)}
+              />
+              Ignore Timestamps
+            </label>
+            <label className="diff-option-label" title="Ignores changes to automatically generated ID fields">
+              <input
+                type="checkbox"
+                checked={comparison.options.ignoreIds}
+                onChange={e => updateOption('ignoreIds', e.target.checked)}
+              />
+              Ignore IDs
+            </label>
+            <label className="diff-option-label" title="Ignores differences in formatting & whitespace">
+              <input
+                type="checkbox"
+                checked={comparison.options.ignoreWhitespace}
+                onChange={e => updateOption('ignoreWhitespace', e.target.checked)}
+              />
+              Ignore Whitespace
+            </label>
+            <label className="diff-option-label" title="Ignores differences in text casing">
+              <input
+                type="checkbox"
+                checked={comparison.options.caseInsensitive}
+                onChange={e => updateOption('caseInsensitive', e.target.checked)}
+              />
+              Case Insensitive
+            </label>
+            <label className="diff-option-label" title="Treats arrays as sets (order doesn't matter)">
+              <input
+                type="checkbox"
+                checked={comparison.options.ignoreArrayOrder}
+                onChange={e => updateOption('ignoreArrayOrder', e.target.checked)}
+              />
+              Ignore Array Order
+            </label>
+            <label className="diff-option-label" title="Provide JSONPath expressions separated by commas.">
+              Custom Ignore Paths
+              <input
+                type="text"
+                className="diff-option-input"
+                value={comparison.options.customIgnorePaths.join(', ')}
+                onChange={e => updateOption('customIgnorePaths', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                placeholder="$.path.to.ignore"
+              />
+            </label>
+          </div>
+        )}
       </div>
+
       {otherHosts.map(host => {
         const isExpanded = expandedHosts[host.hostId] ?? false
         const refHasError = !!referenceHost.error
@@ -393,7 +483,8 @@ export const MultiHostDiffViewer = ({ comparison }: { comparison: ComparisonResu
           host.response?.data,
           referenceHost.response?.data,
           sortMode,
-          jsonPath
+          jsonPath,
+          comparison.options
         )
         const rightLineToPathMap =
           hostDisplayVal !== undefined && hostDisplayVal !== null

@@ -3,7 +3,7 @@
  * Handles formatting and diff computation for responses
  */
 
-import type { HostResponse, HostDifference, Difference } from '@/shared/types'
+import type { HostResponse, HostDifference, Difference, ComparisonOptions } from '@/shared/types'
 import { JSONPath } from 'jsonpath-plus'
 
 /** Response time difference threshold (in ms) above which a difference is reported. */
@@ -163,4 +163,136 @@ export function computeDifferences(
     hostId: hostResponse.hostId,
     differences: diffs
   }
+}
+
+/**
+ * Preprocess data based on comparison options.
+ */
+export function preprocessData(data: unknown, options: ComparisonOptions): unknown {
+  if (data === null || data === undefined) return data
+
+  // Deep clone to avoid mutating original data
+  let processed = JSON.parse(JSON.stringify(data))
+
+  if (options.ignoreTimestamps) {
+    processed = removeTimestamps(processed)
+  }
+  if (options.ignoreIds) {
+    processed = removeIds(processed)
+  }
+  if (options.ignoreWhitespace) {
+    processed = normalizeWhitespace(processed)
+  }
+  if (options.caseInsensitive) {
+    processed = toLowerCaseRecursive(processed)
+  }
+  if (options.ignoreArrayOrder) {
+    processed = sortArraysRecursive(processed)
+  }
+  if (options.customIgnorePaths && options.customIgnorePaths.length > 0) {
+    processed = removeCustomPaths(processed, options.customIgnorePaths)
+  }
+
+  return processed
+}
+
+function removeTimestamps(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(removeTimestamps)
+  if (data !== null && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      if (isTimestampKey(key)) continue
+      result[key] = removeTimestamps(value)
+    }
+    return result
+  }
+  return data
+}
+
+function isTimestampKey(key: string): boolean {
+  const lower = key.toLowerCase()
+  return lower.includes('time') || lower.includes('date') || lower === 'createdat' || lower === 'updatedat'
+}
+
+function removeIds(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(removeIds)
+  if (data !== null && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      if (isIdKey(key)) continue
+      result[key] = removeIds(value)
+    }
+    return result
+  }
+  return data
+}
+
+function isIdKey(key: string): boolean {
+  const lower = key.toLowerCase()
+  return lower === 'id' || lower === '_id' || lower === 'uuid' || lower === 'guid'
+}
+
+function normalizeWhitespace(data: unknown): unknown {
+  if (typeof data === 'string') return data.trim().replace(/\s+/g, ' ')
+  if (Array.isArray(data)) return data.map(normalizeWhitespace)
+  if (data !== null && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      result[key] = normalizeWhitespace(value)
+    }
+    return result
+  }
+  return data
+}
+
+function toLowerCaseRecursive(data: unknown): unknown {
+  if (typeof data === 'string') return data.toLowerCase()
+  if (Array.isArray(data)) return data.map(toLowerCaseRecursive)
+  if (data !== null && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      result[key.toLowerCase()] = toLowerCaseRecursive(value)
+    }
+    return result
+  }
+  return data
+}
+
+function sortArraysRecursive(data: unknown): unknown {
+  if (Array.isArray(data)) {
+    return data.map(sortArraysRecursive).sort((a, b) => {
+      const sa = JSON.stringify(a)
+      const sb = JSON.stringify(b)
+      return sa.localeCompare(sb)
+    })
+  }
+  if (data !== null && typeof data === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      result[key] = sortArraysRecursive(value)
+    }
+    return result
+  }
+  return data
+}
+
+function removeCustomPaths(data: unknown, paths: string[]): unknown {
+  if (!paths || paths.length === 0) return data
+  const clone = JSON.parse(JSON.stringify(data))
+
+  paths.forEach(path => {
+    try {
+      const nodes = JSONPath({ path, json: clone, resultType: 'all' })
+      nodes.forEach((node: any) => {
+        if (node.parent && node.parentProperty !== undefined) {
+          if (!Array.isArray(node.parent)) {
+            delete node.parent[node.parentProperty]
+          }
+        }
+      })
+    } catch (e) {
+      // Ignore invalid paths
+    }
+  })
+  return clone
 }
