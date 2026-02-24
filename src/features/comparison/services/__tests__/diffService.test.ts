@@ -5,8 +5,9 @@ import {
     sortJsonKeysCommonFirst,
     formatResponseData,
     computeDifferences,
+    preprocessData,
 } from '../diffService'
-import type { HostResponse } from '@/shared/types'
+import type { HostResponse, ComparisonOptions } from '@/shared/types'
 
 // ── applyJsonPath ───────────────────────────────────────────────────────────
 
@@ -228,5 +229,133 @@ describe('computeDifferences', () => {
         const host = makeResponse({ hostId: 'host-2' })
         const result = computeDifferences(ref, host)
         expect(result.hostId).toBe('host-2')
+    })
+})
+
+// ── preprocessData ──────────────────────────────────────────────────────────
+
+describe('preprocessData', () => {
+    const defaultOptions: ComparisonOptions = {
+        ignoreTimestamps: false,
+        ignoreIds: false,
+        ignoreWhitespace: false,
+        caseInsensitive: false,
+        ignoreArrayOrder: false,
+        customIgnorePaths: []
+    }
+
+    it('returns data unchanged with default options', () => {
+        const data = { a: 1, b: 'test' }
+        expect(preprocessData(data, defaultOptions)).toEqual(data)
+    })
+
+    it('ignores timestamps', () => {
+        const data = {
+            id: 1,
+            createdAt: '2023-01-01T00:00:00Z',
+            updatedAt: '2023-01-02T00:00:00Z',
+            nested: {
+                timestamp: 1234567890
+            }
+        }
+        const result = preprocessData(data, { ...defaultOptions, ignoreTimestamps: true })
+        expect(result).toEqual({
+            id: 1,
+            nested: {}
+        })
+    })
+
+    it('ignores IDs', () => {
+        const data = {
+            id: 1,
+            _id: 'abc',
+            uuid: '123-456',
+            name: 'test',
+            nested: {
+                guid: '789'
+            }
+        }
+        const result = preprocessData(data, { ...defaultOptions, ignoreIds: true })
+        expect(result).toEqual({
+            name: 'test',
+            nested: {}
+        })
+    })
+
+    it('ignores whitespace in strings', () => {
+        const data = {
+            a: '  hello   world  ',
+            b: ['  foo  ', 'bar'],
+            nested: {
+                c: '  baz  '
+            }
+        }
+        const result = preprocessData(data, { ...defaultOptions, ignoreWhitespace: true })
+        expect(result).toEqual({
+            a: 'hello world',
+            b: ['foo', 'bar'],
+            nested: {
+                c: 'baz'
+            }
+        })
+    })
+
+    it('handles case insensitivity', () => {
+        const data = {
+            Key: 'Value',
+            Nested: {
+                InnerKey: 'InnerValue'
+            }
+        }
+        const result = preprocessData(data, { ...defaultOptions, caseInsensitive: true })
+        expect(result).toEqual({
+            key: 'value',
+            nested: {
+                innerkey: 'innervalue'
+            }
+        })
+    })
+
+    it('ignores array order', () => {
+        const data = {
+            list: [3, 1, 2],
+            objList: [{ id: 2 }, { id: 1 }]
+        }
+        const result = preprocessData(data, { ...defaultOptions, ignoreArrayOrder: true })
+        // Arrays should be sorted
+        expect((result as any).list).toEqual([1, 2, 3])
+        expect((result as any).objList).toEqual([{ id: 1 }, { id: 2 }])
+    })
+
+    it('removes custom paths', () => {
+        const data = {
+            meta: { version: 1, traceId: 'abc' },
+            data: { items: [] }
+        }
+        const result = preprocessData(data, {
+            ...defaultOptions,
+            customIgnorePaths: ['$.meta.traceId']
+        })
+        expect(result).toEqual({
+            meta: { version: 1 },
+            data: { items: [] }
+        })
+    })
+
+    it('combines multiple options', () => {
+        const data = {
+            id: 1,
+            createdAt: '2023',
+            name: '  Test  '
+        }
+        const result = preprocessData(data, {
+            ...defaultOptions,
+            ignoreIds: true,
+            ignoreTimestamps: true,
+            ignoreWhitespace: true
+        })
+        expect(result).toEqual({
+            name: 'Test'
+        })
     })
 })
